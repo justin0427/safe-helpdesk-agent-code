@@ -1,6 +1,6 @@
 # Safe Helpdesk Agent Code
 
-Minimal runnable LangChain IT Helpdesk Agent that can create a mock ticket through a model-selected tool call.
+Minimal runnable LangChain IT Helpdesk Agent. It can search mock IT SOPs and create a mock ticket through model-selected tool calls.
 
 The ticket system is in memory. It does not connect to Jira, ServiceNow, company accounts, notifications, or any other external IT system.
 

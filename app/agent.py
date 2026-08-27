@@ -7,6 +7,7 @@ from langchain.agents import create_agent
 from langchain.tools import ToolRuntime, tool
 from langchain_openai import ChatOpenAI
 
+from app.knowledge_base import MockKnowledgeBase
 from app.tickets import MockTicketStore
 
 
@@ -23,6 +24,16 @@ was created unless the tool returned a successful result.
 class HelpdeskContext:
     requested_by: str
     ticket_store: MockTicketStore
+    knowledge_base: MockKnowledgeBase
+
+
+@tool
+def search_it_sop(
+    query: str,
+    runtime: ToolRuntime[HelpdeskContext],
+) -> list[dict[str, str]]:
+    """Search read-only IT SOP articles before answering a procedural IT question."""
+    return runtime.context.knowledge_base.search(query)
 
 
 @tool
@@ -48,16 +59,18 @@ class HelpdeskAgent:
         model_name: str,
         requested_by: str,
         ticket_store: Optional[MockTicketStore] = None,
+        knowledge_base: Optional[MockKnowledgeBase] = None,
     ) -> None:
         context = HelpdeskContext(
             requested_by=requested_by,
             ticket_store=ticket_store or MockTicketStore(),
+            knowledge_base=knowledge_base or MockKnowledgeBase(),
         )
         model = ChatOpenAI(model=model_name, temperature=0, timeout=30)
         self.context = context
         self.agent = create_agent(
             model=model,
-            tools=[create_ticket],
+            tools=[search_it_sop, create_ticket],
             context_schema=HelpdeskContext,
             system_prompt=SYSTEM_PROMPT,
         )
