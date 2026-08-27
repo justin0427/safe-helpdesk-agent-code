@@ -6,8 +6,10 @@ from typing import Literal, Optional
 from langchain.agents import create_agent
 from langchain.tools import ToolRuntime, tool
 from langchain_openai import ChatOpenAI
+from langgraph.errors import GraphRecursionError
 
 from app.knowledge_base import MockKnowledgeBase
+from app.loop_control import DEFAULT_RECURSION_LIMIT, build_agent_config, loop_limit_message
 from app.tickets import MockTicketStore
 
 
@@ -60,6 +62,7 @@ class HelpdeskAgent:
         requested_by: str,
         ticket_store: Optional[MockTicketStore] = None,
         knowledge_base: Optional[MockKnowledgeBase] = None,
+        recursion_limit: int = DEFAULT_RECURSION_LIMIT,
     ) -> None:
         context = HelpdeskContext(
             requested_by=requested_by,
@@ -68,6 +71,7 @@ class HelpdeskAgent:
         )
         model = ChatOpenAI(model=model_name, temperature=0, timeout=30)
         self.context = context
+        self.agent_config = build_agent_config(recursion_limit)
         self.agent = create_agent(
             model=model,
             tools=[search_it_sop, create_ticket],
@@ -76,8 +80,12 @@ class HelpdeskAgent:
         )
 
     def run(self, user_message: str) -> str:
-        result = self.agent.invoke(
-            {"messages": [{"role": "user", "content": user_message}]},
-            context=self.context,
-        )
+        try:
+            result = self.agent.invoke(
+                {"messages": [{"role": "user", "content": user_message}]},
+                config=self.agent_config,
+                context=self.context,
+            )
+        except GraphRecursionError:
+            return loop_limit_message()
         return result["messages"][-1].text
