@@ -4,11 +4,23 @@ version = "0.1.0"
 description = "A deliberately small IT Helpdesk Agent, built incrementally for an AI security series."
 requires-python = ">=3.11"
 dependencies = [
+    "fastapi>=0.115.0",
     "langchain>=1.0.0",
     "langchain-openai>=1.0.0",
     "langgraph>=1.0.0",
     "python-dotenv>=1.0.0",
+    "uvicorn>=0.30.0",
 ]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["static/*.css", "static/*.html", "static/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

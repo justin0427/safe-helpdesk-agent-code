@@ -1,33 +1,43 @@
 # Safe Helpdesk Agent Code
 
-Minimal runnable LangChain IT Helpdesk Agent. It can search mock IT SOPs and create a mock ticket through model-selected tool calls. Each run has a bounded LangGraph recursion limit.
+這是一個可在本機操作的 LangChain IT Helpdesk Agent。它會查詢 mock SOP、建立記憶體中的 mock 工單，並把工具軌跡攤開顯示。每次 LangGraph 執行都有步數上限。
 
-The ticket system is in memory. It does not connect to Jira, ServiceNow, company accounts, notifications, or any other external IT system.
+工單不會連到 Jira、ServiceNow、公司帳號、通知服務或任何真實 IT 系統。
 
 ## Requirements
 
 - Python 3.11+
 - An OpenAI API key
 
-## Run
+## 啟動本機頁面
 
 ```bash
-python3.11 -m venv .venv
+uv venv --python 3.11 .venv
 source .venv/bin/activate
-pip install -e .
+uv pip install -e .
 cp .env.example .env
 ```
 
-Set `OPENAI_API_KEY` and `MODEL_NAME` in `.env`, then run:
+在 `.env` 設定 `OPENAI_API_KEY` 與 `MODEL_NAME` 後，啟動：
+
+```bash
+uvicorn app.web:app --reload
+```
+
+開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。頁面有三種操作：
+
+- 輸入問題，執行真正的 LangChain Agent。
+- 「查看 SOP 優先流程」不需要 API key，固定顯示先查 SOP、再建 mock 工單的軌跡。
+- 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
+
+前兩個示範的目的不同。SOP 示範驗證 Day 3 的工具順序與後端阻擋規則；迴圈示範提供 Day 4 可重現的安全停止軌跡。實際 LangChain Agent 仍透過 LangGraph 的 `recursion_limit` 控制執行上限。
+
+## CLI（可選）
+
+如果只想從終端機試跑 Agent：
 
 ```bash
 python -m app.main
-```
-
-Example input:
-
-```text
-VPN 連不上，從今天早上九點開始發生，請幫我開一張高優先級工單。
 ```
 
 ## Test

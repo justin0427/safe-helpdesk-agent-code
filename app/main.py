@@ -1,4 +1,4 @@
-"""CLI entry point for the Day 2 demo."""
+"""CLI entry point kept as a small alternative to the local web console."""
 
 import os
 

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Safe Helpdesk Agent</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <p class="eyebrow">LOCAL SECURITY DEMO</p>
+      <div>
+        <h1>Safe Helpdesk Agent</h1>
+        <p>把 Agent 的工具軌跡攤開來看。</p>
+      </div>
+      <p class="scope">僅使用 mock SOP 與記憶體工單，不連線公司系統。</p>
+    </header>
+
+    <main class="console">
+      <section class="request-panel" aria-labelledby="request-title">
+        <div class="section-heading">
+          <p class="section-number">01</p>
+          <h2 id="request-title">提出 IT 問題</h2>
+        </div>
+        <label for="message">訊息</label>
+        <textarea id="message" rows="8">VPN 連不上，從今天早上九點開始發生，請先查 SOP；如果仍無法排除，請幫我開一張高優先級工單。</textarea>
+        <button id="run-agent" class="primary" type="button">執行 LangChain Agent</button>
+        <p class="hint">需要在 <code>.env</code> 設定 OpenAI API key 與模型名稱。</p>
+
+        <div class="demo-actions" aria-label="不需 API key 的示範">
+          <p>不需 API key 的可重現示範</p>
+          <button id="run-sop-demo" class="secondary" type="button">查看 SOP 優先流程</button>
+          <button id="run-loop-demo" class="secondary" type="button">觸發迴圈停止</button>
+        </div>
+      </section>
+
+      <section class="result-panel" aria-live="polite" aria-labelledby="result-title">
+        <div class="section-heading">
+          <p class="section-number">02</p>
+          <h2 id="result-title">執行結果</h2>
+        </div>
+        <p id="run-status" class="status">尚未執行</p>
+
+        <div class="result-block">
+          <h3>Agent 回覆</h3>
+          <p id="response" class="response">從左側輸入問題，或執行其中一個示範。</p>
+        </div>
+
+        <div class="result-block" id="ticket-block" hidden>
+          <h3>Mock 工單</h3>
+          <pre id="ticket"></pre>
+        </div>
+
+        <div class="result-block">
+          <h3>工具軌跡</h3>
+          <ol id="trace" class="trace">
+            <li class="empty-state">執行後會顯示模型、工具與 guardrail 的事件。</li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <footer>Day 3：SOP 優先工具邊界　/　Day 4：迴圈限制與安全停止</footer>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
