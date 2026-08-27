@@ -1,0 +1,12 @@
+[project]
+name = "safe-helpdesk-agent"
+version = "0.1.0"
+description = "A deliberately small IT Helpdesk Agent, built incrementally for an AI security series."
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
