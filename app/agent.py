@@ -1,10 +1,11 @@
-"""Day 2: the smallest useful tool-calling Helpdesk Agent."""
+"""Day 2: a minimal LangChain Helpdesk Agent with one mock tool."""
 
-import json
-from collections.abc import Callable
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Literal, Optional
 
-from openai import OpenAI
+from langchain.agents import create_agent
+from langchain.tools import ToolRuntime, tool
+from langchain_openai import ChatOpenAI
 
 from app.tickets import MockTicketStore
 
@@ -17,34 +18,27 @@ Use the tool result to tell the user the ticket number. Do not claim a ticket
 was created unless the tool returned a successful result.
 """.strip()
 
-TOOLS: list[dict[str, Any]] = [
-    {
-        "type": "function",
-        "name": "create_ticket",
-        "description": "Create an IT support ticket when a user reports a technical problem.",
-        "strict": True,
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "type": "string",
-                    "description": "A concise problem summary, no more than 20 Chinese characters.",
-                },
-                "description": {
-                    "type": "string",
-                    "description": "The full problem reported by the user.",
-                },
-                "priority": {
-                    "type": "string",
-                    "enum": ["low", "medium", "high"],
-                    "description": "The ticket priority.",
-                },
-            },
-            "required": ["title", "description", "priority"],
-            "additionalProperties": False,
-        },
-    }
-]
+
+@dataclass
+class HelpdeskContext:
+    requested_by: str
+    ticket_store: MockTicketStore
+
+
+@tool
+def create_ticket(
+    title: str,
+    description: str,
+    priority: Literal["low", "medium", "high"],
+    runtime: ToolRuntime[HelpdeskContext],
+) -> dict[str, str]:
+    """Create an IT support ticket when a user reports a technical problem."""
+    return runtime.context.ticket_store.create_ticket(
+        title=title,
+        description=description,
+        priority=priority,
+        requested_by=runtime.context.requested_by,
+    )
 
 
 class HelpdeskAgent:
@@ -54,52 +48,23 @@ class HelpdeskAgent:
         model_name: str,
         requested_by: str,
         ticket_store: Optional[MockTicketStore] = None,
-        client: Optional[OpenAI] = None,
     ) -> None:
-        self.model_name = model_name
-        self.requested_by = requested_by
-        self.ticket_store = ticket_store or MockTicketStore()
-        self.client = client or OpenAI()
+        context = HelpdeskContext(
+            requested_by=requested_by,
+            ticket_store=ticket_store or MockTicketStore(),
+        )
+        model = ChatOpenAI(model=model_name, temperature=0, timeout=30)
+        self.context = context
+        self.agent = create_agent(
+            model=model,
+            tools=[create_ticket],
+            context_schema=HelpdeskContext,
+            system_prompt=SYSTEM_PROMPT,
+        )
 
     def run(self, user_message: str) -> str:
-        response = self.client.responses.create(
-            model=self.model_name,
-            instructions=SYSTEM_PROMPT,
-            input=user_message,
-            tools=TOOLS,
+        result = self.agent.invoke(
+            {"messages": [{"role": "user", "content": user_message}]},
+            context=self.context,
         )
-
-        tool_outputs = []
-        for item in response.output:
-            if item.type != "function_call":
-                continue
-
-            tool_outputs.append(self._execute_tool_call(item.name, item.call_id, item.arguments))
-
-        if not tool_outputs:
-            return response.output_text
-
-        final_response = self.client.responses.create(
-            model=self.model_name,
-            previous_response_id=response.id,
-            input=tool_outputs,
-        )
-        return final_response.output_text
-
-    def _execute_tool_call(self, name: str, call_id: str, arguments: str) -> dict[str, str]:
-        # This allow-list is intentionally explicit. Later days turn it into a policy layer.
-        if name != "create_ticket":
-            raise ValueError(f"Tool is not allowed: {name}")
-
-        args = json.loads(arguments)
-        result = self.ticket_store.create_ticket(
-            title=args["title"],
-            description=args["description"],
-            priority=args["priority"],
-            requested_by=self.requested_by,
-        )
-        return {
-            "type": "function_call_output",
-            "call_id": call_id,
-            "output": json.dumps(result, ensure_ascii=False),
-        }
+        return result["messages"][-1].text
