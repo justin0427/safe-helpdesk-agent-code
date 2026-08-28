@@ -15,7 +15,7 @@
           <h1>Agent control room</h1>
         </div>
       </div>
-      <div class="environment"><span></span>Sandbox mode</div>
+      <div class="environment"><span></span>Mock data only</div>
     </header>
 
     <main class="workbench">
@@ -30,8 +30,8 @@
         <p class="intro">Agent 會先查詢可用 SOP，再決定是否建立 mock 工單。每一個工具選擇都會記錄在右側。</p>
 
         <div class="safety-note">
-          <strong>受控示範環境</strong>
-          <span>不會連線公司帳號、通知或正式工單系統。</span>
+          <strong>本機 Mock 資料</strong>
+          <span>不會連線公司帳號、通知或正式工單系統；這不是隔離執行環境。</span>
         </div>
 
         <label for="message">訊息</label>
@@ -59,7 +59,7 @@
           </div>
           <span class="step">02</span>
         </div>
-        <div class="status-row"><p id="run-status" class="status">Ready</p><span>每次執行都是獨立的 mock session</span></div>
+        <div class="status-row"><p id="run-status" class="status">Ready</p><span>每次執行都使用獨立的記憶體 mock 資料</span></div>
 
         <div class="result-block">
           <div class="block-heading"><h3>Agent 回覆</h3><span>FINAL OUTPUT</span></div>
