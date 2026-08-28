@@ -49,3 +49,13 @@ python -m app.main
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## Promptfoo security suite
+
+Day 5 的 deterministic security cases 不需要 OpenAI API key：
+
+```bash
+npx --yes promptfoo@latest eval -c evals/promptfooconfig.yaml
+```
+
+它會驗證正常開單、越權帳號重設請求、SOP 工具不可用，以及工具失敗時不得假裝成功。這份 suite 直接呼叫本機 mock workflow；後續接上真實模型後，會在同一份設定增加模型與 trajectory cases。
