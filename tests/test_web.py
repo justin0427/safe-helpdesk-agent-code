@@ -15,6 +15,12 @@ class WebConsoleTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Safe Helpdesk Agent", response.text)
 
+    def test_serves_the_console_stylesheet(self) -> None:
+        response = self.client.get("/static/styles.css")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(".workbench", response.text)
+
     def test_runs_the_sop_first_demo(self) -> None:
         response = self.client.post("/api/demos/sop-first")
 
