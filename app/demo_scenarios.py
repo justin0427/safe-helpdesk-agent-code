@@ -6,6 +6,7 @@ from app.helpdesk_workflow import HelpdeskWorkflow
 from app.execution_budget import BudgetLedger, BudgetLimits, TokenPrice
 from app.knowledge_base import MockKnowledgeBase
 from app.loop_control import DEFAULT_RECURSION_LIMIT, loop_limit_message
+from app.retry_control import ToolTimeoutError
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
 
@@ -64,6 +65,43 @@ def run_runaway_loop_demo(
     return AgentRunResult(
         response=loop_limit_message(),
         trace=trace.as_list(),
+        stopped=True,
+    )
+
+
+class TimedOutSopSource:
+    """A deterministic source that lets the UI demonstrate safe degradation."""
+
+    def search(self, query: str) -> list[dict[str, str]]:
+        raise ToolTimeoutError("mock SOP request exceeded its client timeout")
+
+
+def run_sop_timeout_fallback_demo() -> AgentRunResult:
+    """Show timeout retries falling back without creating a ticket."""
+    trace = RunTrace()
+    workflow = HelpdeskWorkflow(
+        requested_by="demo.user",
+        ticket_store=MockTicketStore(),
+        knowledge_base=TimedOutSopSource(),  # type: ignore[arg-type]
+        trace=trace,
+        retry_wait=lambda _: None,
+    )
+    results = workflow.search_it_sop("VPN 連不上")
+    ticket = workflow.create_ticket(
+        title="VPN 無法連線",
+        description="SOP 查詢逾時。",
+        priority="high",
+    )
+    trace.add(
+        kind="model",
+        name="final_response",
+        status="completed",
+        detail="告知 SOP 暫時無法使用，沒有假裝已建立工單。",
+    )
+    return AgentRunResult(
+        response=results[0]["content"],
+        trace=trace.as_list(),
+        ticket=None if ticket["status"] == "blocked" else ticket,
         stopped=True,
     )
 

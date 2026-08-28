@@ -24,6 +24,7 @@ class MockTicketStore:
 
     def __init__(self) -> None:
         self.tickets: list[Ticket] = []
+        self._tickets_by_idempotency_key: dict[str, Ticket] = {}
 
     def create_ticket(
         self,
@@ -32,9 +33,14 @@ class MockTicketStore:
         description: str,
         priority: str,
         requested_by: str,
+        idempotency_key: str | None = None,
     ) -> dict[str, str]:
         if priority not in ALLOWED_PRIORITIES:
             raise ValueError(f"priority must be one of {sorted(ALLOWED_PRIORITIES)}")
+        if idempotency_key and idempotency_key in self._tickets_by_idempotency_key:
+            ticket = asdict(self._tickets_by_idempotency_key[idempotency_key])
+            ticket["idempotency_status"] = "replayed"
+            return ticket
 
         ticket = Ticket(
             ticket_id=f"INC-{uuid4().hex[:8].upper()}",
@@ -46,4 +52,8 @@ class MockTicketStore:
             created_at=datetime.now(timezone.utc).isoformat(),
         )
         self.tickets.append(ticket)
-        return asdict(ticket)
+        if idempotency_key:
+            self._tickets_by_idempotency_key[idempotency_key] = ticket
+        result = asdict(ticket)
+        result["idempotency_status"] = "created"
+        return result

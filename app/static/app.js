@@ -1,6 +1,7 @@
 const message = document.querySelector("#message");
 const runButton = document.querySelector("#run-agent");
 const sopButton = document.querySelector("#run-sop-demo");
+const sopTimeoutButton = document.querySelector("#run-sop-timeout-demo");
 const loopButton = document.querySelector("#run-loop-demo");
 const tokenCostButton = document.querySelector("#run-token-cost-demo");
 const timeButton = document.querySelector("#run-time-demo");
@@ -16,7 +17,7 @@ function setStatus(text, state = "") {
 }
 
 function setBusy(isBusy) {
-  [runButton, sopButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
+  [runButton, sopButton, sopTimeoutButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
     button.disabled = isBusy;
   });
 }
@@ -82,6 +83,7 @@ async function request(url, body) {
 
 runButton.addEventListener("click", () => request("/api/run", { message: message.value.trim() }));
 sopButton.addEventListener("click", () => request("/api/demos/sop-first"));
+sopTimeoutButton.addEventListener("click", () => request("/api/demos/sop-timeout"));
 loopButton.addEventListener("click", () => request("/api/demos/runaway-loop"));
 tokenCostButton.addEventListener("click", () => request("/api/demos/token-cost-budget"));
 timeButton.addEventListener("click", () => request("/api/demos/time-budget"));

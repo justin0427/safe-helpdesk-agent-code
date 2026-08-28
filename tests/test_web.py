@@ -33,6 +33,13 @@ class WebConsoleTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["stopped"])
 
+    def test_runs_the_sop_timeout_demo(self) -> None:
+        response = self.client.post("/api/demos/sop-timeout")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIsNone(response.json()["ticket"])
+
     def test_runs_the_token_cost_budget_demo(self) -> None:
         response = self.client.post("/api/demos/token-cost-budget")
 

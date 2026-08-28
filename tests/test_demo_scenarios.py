@@ -1,6 +1,7 @@
 import unittest
 
 from app.demo_scenarios import (
+    run_sop_timeout_fallback_demo,
     run_time_budget_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
@@ -38,3 +39,11 @@ class DemoScenarioTests(unittest.TestCase):
         self.assertTrue(result.stopped)
         self.assertEqual(result.trace[-1]["name"], "time_budget")
         self.assertNotIn("create_ticket", [event["name"] for event in result.trace])
+
+    def test_sop_timeout_degrades_without_creating_a_ticket(self) -> None:
+        result = run_sop_timeout_fallback_demo()
+
+        self.assertTrue(result.stopped)
+        self.assertIsNone(result.ticket)
+        self.assertIn("不會在無法查核流程時自動建立工單", result.response)
+        self.assertIn("sop_unavailable", [event["name"] for event in result.trace])

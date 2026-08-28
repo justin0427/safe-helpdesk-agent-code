@@ -29,3 +29,24 @@ class MockTicketStoreTests(unittest.TestCase):
                 priority="urgent",
                 requested_by="demo.user",
             )
+
+    def test_reuses_a_ticket_for_the_same_idempotency_key(self) -> None:
+        store = MockTicketStore()
+        first = store.create_ticket(
+            title="VPN 無法連線",
+            description="請協助處理。",
+            priority="high",
+            requested_by="demo.user",
+            idempotency_key="same-request",
+        )
+        second = store.create_ticket(
+            title="VPN 無法連線",
+            description="請協助處理。",
+            priority="high",
+            requested_by="demo.user",
+            idempotency_key="same-request",
+        )
+
+        self.assertEqual(first["ticket_id"], second["ticket_id"])
+        self.assertEqual(second["idempotency_status"], "replayed")
+        self.assertEqual(len(store.tickets), 1)

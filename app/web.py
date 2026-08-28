@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.agent import HelpdeskAgent
 from app.demo_scenarios import (
+    run_sop_timeout_fallback_demo,
     run_time_budget_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
@@ -65,6 +66,11 @@ def sop_first_demo() -> dict:
 @app.post("/api/demos/runaway-loop")
 def runaway_loop_demo() -> dict:
     return run_runaway_loop_demo().as_dict()
+
+
+@app.post("/api/demos/sop-timeout")
+def sop_timeout_demo() -> dict:
+    return run_sop_timeout_fallback_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")
