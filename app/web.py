@@ -1,6 +1,7 @@
 """Local web console for the Helpdesk Agent series demo."""
 
 from pathlib import Path
+from decimal import Decimal, InvalidOperation
 import os
 
 from dotenv import load_dotenv
@@ -11,8 +12,8 @@ from pydantic import BaseModel, Field
 
 from app.agent import HelpdeskAgent
 from app.demo_scenarios import (
-    run_retry_budget_demo,
-    run_retry_success_demo,
+    run_time_budget_demo,
+    run_token_cost_budget_demo,
     run_runaway_loop_demo,
     run_sop_first_demo,
 )
@@ -43,7 +44,16 @@ def run_agent(request: AgentRequest) -> dict:
             status_code=503,
             detail="請在 .env 設定 OPENAI_API_KEY 和 MODEL_NAME，或先使用下方兩個本機示範。",
         )
-    agent = HelpdeskAgent(model_name=model_name, requested_by="demo.user")
+    try:
+        agent = HelpdeskAgent(
+            model_name=model_name,
+            requested_by="demo.user",
+            input_price_per_million_usd=_decimal_env("MODEL_INPUT_PER_MILLION_USD"),
+            output_price_per_million_usd=_decimal_env("MODEL_OUTPUT_PER_MILLION_USD"),
+            max_cost_usd=_decimal_env("RUN_COST_BUDGET_USD"),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
     return agent.run_detailed(request.message).as_dict()
 
 
@@ -57,11 +67,21 @@ def runaway_loop_demo() -> dict:
     return run_runaway_loop_demo().as_dict()
 
 
-@app.post("/api/demos/retry-success")
-def retry_success_demo() -> dict:
-    return run_retry_success_demo().as_dict()
+@app.post("/api/demos/token-cost-budget")
+def token_cost_budget_demo() -> dict:
+    return run_token_cost_budget_demo().as_dict()
 
 
-@app.post("/api/demos/retry-budget")
-def retry_budget_demo() -> dict:
-    return run_retry_budget_demo().as_dict()
+@app.post("/api/demos/time-budget")
+def time_budget_demo() -> dict:
+    return run_time_budget_demo().as_dict()
+
+
+def _decimal_env(name: str) -> Decimal | None:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return None
+    try:
+        return Decimal(value)
+    except InvalidOperation as error:
+        raise ValueError(f"{name} 必須是十進位數字") from error

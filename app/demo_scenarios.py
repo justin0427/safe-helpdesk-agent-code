@@ -1,14 +1,11 @@
 """Deterministic scenarios used by the page and regression tests."""
 
+from decimal import Decimal
+
 from app.helpdesk_workflow import HelpdeskWorkflow
+from app.execution_budget import BudgetLedger, BudgetLimits, TokenPrice
 from app.knowledge_base import MockKnowledgeBase
 from app.loop_control import DEFAULT_RECURSION_LIMIT, loop_limit_message
-from app.retry_control import (
-    DEFAULT_READ_ONLY_RETRY_POLICY,
-    RetryBudgetExhausted,
-    TransientToolError,
-    run_with_retry,
-)
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
 
@@ -71,62 +68,98 @@ def run_runaway_loop_demo(
     )
 
 
-class IntermittentSopService:
-    """A deterministic stand-in for a temporarily unavailable read-only service."""
-
-    def __init__(self, *, failures_before_success: int) -> None:
-        self.failures_before_success = failures_before_success
-        self.calls = 0
-        self.knowledge_base = MockKnowledgeBase()
-
-    def search(self, query: str) -> list[dict[str, str]]:
-        self.calls += 1
-        if self.calls <= self.failures_before_success:
-            raise TransientToolError("mock SOP service is temporarily unavailable")
-        return self.knowledge_base.search(query)
+DEMO_TOKEN_PRICE = TokenPrice(
+    input_per_million_usd=Decimal("1"),
+    output_per_million_usd=Decimal("2"),
+)
 
 
-def run_retry_success_demo() -> AgentRunResult:
-    """Show a bounded retry for a read-only operation that later succeeds."""
-    trace = RunTrace()
-    service = IntermittentSopService(failures_before_success=2)
-    results = run_with_retry(
-        lambda: service.search("VPN 連不上"),
-        operation_name="search_it_sop",
-        policy=DEFAULT_READ_ONLY_RETRY_POLICY,
-        trace=trace,
-        wait=lambda _: None,
-    )
+def _record_model_usage(
+    trace: RunTrace,
+    ledger: BudgetLedger,
+    *,
+    input_tokens: int,
+    output_tokens: int,
+    elapsed_seconds: float,
+) -> str | None:
+    ledger.record_model_usage(input_tokens=input_tokens, output_tokens=output_tokens)
     trace.add(
         kind="model",
-        name="final_response",
+        name="model_call",
         status="completed",
-        detail="查詢成功後才整理回覆，沒有重送任何寫入操作。",
+        detail=(
+            f"累積 {ledger.total_tokens} tokens；示範估算成本 "
+            f"${ledger.estimated_cost_usd:.4f}。"
+        ),
+        data={
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": ledger.total_tokens,
+            "estimated_cost_usd": str(ledger.estimated_cost_usd),
+            "elapsed_seconds": elapsed_seconds,
+        },
+    )
+    return ledger.exceeded_limit(elapsed_seconds=elapsed_seconds)
+
+
+def run_token_cost_budget_demo() -> AgentRunResult:
+    """Show a budget stopping the next action after measured model usage."""
+    trace = RunTrace()
+    ledger = BudgetLedger(
+        limits=BudgetLimits(max_estimated_cost_usd=Decimal("0.003")),
+        pricing=DEMO_TOKEN_PRICE,
+    )
+    _record_model_usage(
+        trace,
+        ledger,
+        input_tokens=800,
+        output_tokens=300,
+        elapsed_seconds=9,
+    )
+    exceeded = _record_model_usage(
+        trace,
+        ledger,
+        input_tokens=1_200,
+        output_tokens=600,
+        elapsed_seconds=21,
+    )
+    assert exceeded == "cost_budget"
+    trace.add(
+        kind="guardrail",
+        name="cost_budget",
+        status="stopped",
+        detail="示範成本超過 $0.0030，停止下一次模型或工具呼叫。",
     )
     return AgentRunResult(
-        response=f"第 3 次查詢成功，找到 {len(results)} 篇 SOP。未建立或重送任何工單。",
+        response="已達成本預算，停止下一次 Agent 動作。這個示範沒有建立工單。",
         trace=trace.as_list(),
+        stopped=True,
     )
 
 
-def run_retry_budget_demo() -> AgentRunResult:
-    """Show that an unavailable read-only service stops at the retry budget."""
+def run_time_budget_demo() -> AgentRunResult:
+    """Show a deadline stopping the next action before a write is attempted."""
     trace = RunTrace()
-    service = IntermittentSopService(
-        failures_before_success=DEFAULT_READ_ONLY_RETRY_POLICY.max_attempts,
+    ledger = BudgetLedger(
+        limits=BudgetLimits(max_estimated_cost_usd=Decimal("0.003")),
+        pricing=DEMO_TOKEN_PRICE,
     )
-    try:
-        run_with_retry(
-            lambda: service.search("VPN 連不上"),
-            operation_name="search_it_sop",
-            policy=DEFAULT_READ_ONLY_RETRY_POLICY,
-            trace=trace,
-            wait=lambda _: None,
-        )
-    except RetryBudgetExhausted:
-        return AgentRunResult(
-            response="SOP 服務暫時無法使用，已用完重試預算。未建立或重送任何工單。",
-            trace=trace.as_list(),
-            stopped=True,
-        )
-    raise AssertionError("the demo must exhaust its retry budget")
+    exceeded = _record_model_usage(
+        trace,
+        ledger,
+        input_tokens=600,
+        output_tokens=150,
+        elapsed_seconds=46,
+    )
+    assert exceeded == "time_budget"
+    trace.add(
+        kind="guardrail",
+        name="time_budget",
+        status="stopped",
+        detail="示範執行時間超過 45 秒，停止下一次模型或工具呼叫。",
+    )
+    return AgentRunResult(
+        response="已達時間預算，停止下一次 Agent 動作。這個示範沒有建立工單。",
+        trace=trace.as_list(),
+        stopped=True,
+    )

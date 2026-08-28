@@ -225,8 +225,6 @@ pre { overflow-x: auto; margin: 14px 0 0; padding: 14px; border: 1px solid #e2e9
 .trace-detail { display: block; margin-top: 3px; color: #72847a; font-size: 0.77rem; line-height: 1.5; }
 .event-status { padding: 4px 6px; border-radius: 5px; color: #28715a; background: #e4f4ea; font-size: 0.61rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .event-status.blocked, .event-status.stopped { color: #aa4435; background: #fff0ec; }
-.event-status.failed { color: #9a6219; background: #fff5de; }
-.event-status.scheduled { color: #386d9d; background: #edf6ff; }
 .empty-state { display: block !important; padding: 18px !important; color: #819187; font-size: 0.82rem; line-height: 1.55; text-align: center; }
 .empty-state::before { content: none !important; }
 

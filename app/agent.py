@@ -1,13 +1,25 @@
 """LangChain Helpdesk Agent with SOP-first tools and a bounded runtime."""
 
 from dataclasses import dataclass
+from decimal import Decimal
+import time
 from typing import Literal, Optional
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
 from langchain.tools import ToolRuntime, tool
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 
+from app.execution_budget import (
+    BudgetLimits,
+    ExecutionBudgetMiddleware,
+    MAX_MODEL_CALLS,
+    MAX_OUTPUT_TOKENS_PER_CALL,
+    MAX_TOOL_CALLS,
+    MODEL_TIMEOUT_SECONDS,
+    TokenPrice,
+)
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
 from app.loop_control import DEFAULT_RECURSION_LIMIT, build_agent_config, loop_limit_message
@@ -63,17 +75,40 @@ class HelpdeskAgent:
         ticket_store: Optional[MockTicketStore] = None,
         knowledge_base: Optional[MockKnowledgeBase] = None,
         recursion_limit: int = DEFAULT_RECURSION_LIMIT,
+        input_price_per_million_usd: Decimal | None = None,
+        output_price_per_million_usd: Decimal | None = None,
+        max_cost_usd: Decimal | None = None,
     ) -> None:
-        model = ChatOpenAI(model=model_name, temperature=0, timeout=30)
+        model = ChatOpenAI(
+            model=model_name,
+            temperature=0,
+            timeout=MODEL_TIMEOUT_SECONDS,
+            max_tokens=MAX_OUTPUT_TOKENS_PER_CALL,
+        )
         self.requested_by = requested_by
         self.ticket_store = ticket_store or MockTicketStore()
         self.knowledge_base = knowledge_base or MockKnowledgeBase()
         self.agent_config = build_agent_config(recursion_limit)
+        self.budget_limits = BudgetLimits(max_estimated_cost_usd=max_cost_usd)
+        self.token_price = _token_price(
+            input_price_per_million_usd,
+            output_price_per_million_usd,
+        )
+        if max_cost_usd is not None and self.token_price is None:
+            raise ValueError("cost budget requires both input and output token prices")
         self.agent = create_agent(
             model=model,
             tools=[search_it_sop, create_ticket],
             context_schema=HelpdeskContext,
             system_prompt=SYSTEM_PROMPT,
+            middleware=[
+                ExecutionBudgetMiddleware(
+                    limits=self.budget_limits,
+                    pricing=self.token_price,
+                ),
+                ModelCallLimitMiddleware(run_limit=MAX_MODEL_CALLS, exit_behavior="end"),
+                ToolCallLimitMiddleware(run_limit=MAX_TOOL_CALLS, exit_behavior="end"),
+            ],
         )
 
     def run(self, user_message: str) -> str:
@@ -91,7 +126,10 @@ class HelpdeskAgent:
         )
         try:
             result = self.agent.invoke(
-                {"messages": [{"role": "user", "content": user_message}]},
+                {
+                    "messages": [{"role": "user", "content": user_message}],
+                    "budget_started_at": time.monotonic(),
+                },
                 config=self.agent_config,
                 context=context,
             )
@@ -128,3 +166,14 @@ def _message_text(content: object) -> str:
             if isinstance(part, dict) and isinstance(part.get("text"), str)
         )
     return str(content)
+
+
+def _token_price(
+    input_price_per_million_usd: Decimal | None,
+    output_price_per_million_usd: Decimal | None,
+) -> TokenPrice | None:
+    if input_price_per_million_usd is None and output_price_per_million_usd is None:
+        return None
+    if input_price_per_million_usd is None or output_price_per_million_usd is None:
+        raise ValueError("both token prices must be configured together")
+    return TokenPrice(input_price_per_million_usd, output_price_per_million_usd)

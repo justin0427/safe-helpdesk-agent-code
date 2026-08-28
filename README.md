@@ -29,9 +29,11 @@ uvicorn app.web:app --reload
 - 輸入問題，執行真正的 LangChain Agent。
 - 「查看 SOP 優先流程」不需要 API key，固定顯示先查 SOP、再建 mock 工單的軌跡。
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
-- 「重試後成功」與「重試停止」不需要 API key，分別顯示唯讀 SOP 查詢在重試後成功，以及用完重試預算後停止。
+- 「Token／成本上限」與「時間上限」不需要 API key，固定顯示執行預算用完後，停止下一次 Agent 動作。
 
-各示範的目的不同。SOP 示範驗證 Day 3 的工具順序與後端阻擋規則；迴圈示範提供 Day 4 可重現的安全停止軌跡；重試示範驗證 Day 5 的唯讀查詢重試預算。實際 LangChain Agent 仍透過 LangGraph 的 `recursion_limit` 控制執行上限。
+各示範的目的不同。SOP 示範驗證 Day 3 的工具順序與後端阻擋規則；迴圈示範提供 Day 4 可重現的安全停止軌跡；兩個預算示範對應 Day 5。實際 LangChain Agent 同時設定 LangGraph `recursion_limit`、LangChain model/tool call 上限、每次模型呼叫 timeout，以及單次輸出 token 上限。
+
+若要啟用美元成本上限，還要依實際部署模型填入 `MODEL_INPUT_PER_MILLION_USD`、`MODEL_OUTPUT_PER_MILLION_USD` 與 `RUN_COST_BUDGET_USD`。價格留空時，Agent 仍有時間與 Token 上限，但不會猜測模型價格。
 
 ## CLI（可選）
 
