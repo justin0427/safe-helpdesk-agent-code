@@ -32,3 +32,17 @@ class WebConsoleTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["stopped"])
+
+    def test_runs_the_retry_success_demo(self) -> None:
+        response = self.client.post("/api/demos/retry-success")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["stopped"])
+        self.assertIn("第 3 次", response.json()["response"])
+
+    def test_stops_the_retry_demo_at_its_budget(self) -> None:
+        response = self.client.post("/api/demos/retry-budget")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertEqual(response.json()["trace"][-1]["name"], "retry_budget")

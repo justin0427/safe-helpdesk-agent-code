@@ -24,13 +24,14 @@ cp .env.example .env
 uvicorn app.web:app --reload
 ```
 
-開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。頁面有三種操作：
+開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。頁面有五種操作：
 
 - 輸入問題，執行真正的 LangChain Agent。
 - 「查看 SOP 優先流程」不需要 API key，固定顯示先查 SOP、再建 mock 工單的軌跡。
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
+- 「重試後成功」與「重試停止」不需要 API key，分別顯示唯讀 SOP 查詢在重試後成功，以及用完重試預算後停止。
 
-前兩個示範的目的不同。SOP 示範驗證 Day 3 的工具順序與後端阻擋規則；迴圈示範提供 Day 4 可重現的安全停止軌跡。實際 LangChain Agent 仍透過 LangGraph 的 `recursion_limit` 控制執行上限。
+各示範的目的不同。SOP 示範驗證 Day 3 的工具順序與後端阻擋規則；迴圈示範提供 Day 4 可重現的安全停止軌跡；重試示範驗證 Day 5 的唯讀查詢重試預算。實際 LangChain Agent 仍透過 LangGraph 的 `recursion_limit` 控制執行上限。
 
 ## CLI（可選）
 

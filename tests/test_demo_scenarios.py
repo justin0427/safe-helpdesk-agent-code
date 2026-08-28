@@ -1,6 +1,11 @@
 import unittest
 
-from app.demo_scenarios import run_runaway_loop_demo, run_sop_first_demo
+from app.demo_scenarios import (
+    run_retry_budget_demo,
+    run_retry_success_demo,
+    run_runaway_loop_demo,
+    run_sop_first_demo,
+)
 
 
 class DemoScenarioTests(unittest.TestCase):
@@ -19,3 +24,19 @@ class DemoScenarioTests(unittest.TestCase):
         self.assertEqual(len(result.trace), 5)
         self.assertEqual(result.trace[-1]["status"], "stopped")
         self.assertIn("停止", result.response)
+
+    def test_retry_demo_stops_after_a_bounded_number_of_read_only_attempts(self) -> None:
+        result = run_retry_budget_demo()
+
+        self.assertTrue(result.stopped)
+        self.assertEqual(result.trace[-1]["name"], "retry_budget")
+        self.assertEqual(result.trace[-1]["status"], "stopped")
+        self.assertNotIn("create_ticket", [event["name"] for event in result.trace])
+
+    def test_retry_demo_recovers_without_repeating_a_write(self) -> None:
+        result = run_retry_success_demo()
+
+        self.assertFalse(result.stopped)
+        self.assertEqual(result.trace[-2]["status"], "completed")
+        self.assertEqual(result.trace[-2]["data"]["attempt"], 3)
+        self.assertNotIn("create_ticket", [event["name"] for event in result.trace])

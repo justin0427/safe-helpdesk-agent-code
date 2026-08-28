@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.knowledge_base import MockKnowledgeBase
+from app.retry_control import DEFAULT_READ_ONLY_RETRY_POLICY, run_with_retry
 from app.run_trace import RunTrace
 from app.tickets import MockTicketStore
 
@@ -20,15 +21,13 @@ class HelpdeskWorkflow:
     sop_checked: bool = False
 
     def search_it_sop(self, query: str) -> list[dict[str, str]]:
-        results = self.knowledge_base.search(query)
-        self.sop_checked = True
-        self.trace.add(
-            kind="tool",
-            name="search_it_sop",
-            status="completed",
-            detail=f"找到 {len(results)} 篇 SOP。",
-            data={"article_ids": [article["article_id"] for article in results]},
+        results = run_with_retry(
+            lambda: self.knowledge_base.search(query),
+            operation_name="search_it_sop",
+            policy=DEFAULT_READ_ONLY_RETRY_POLICY,
+            trace=self.trace,
         )
+        self.sop_checked = True
         return results
 
     def create_ticket(

@@ -10,7 +10,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.agent import HelpdeskAgent
-from app.demo_scenarios import run_runaway_loop_demo, run_sop_first_demo
+from app.demo_scenarios import (
+    run_retry_budget_demo,
+    run_retry_success_demo,
+    run_runaway_loop_demo,
+    run_sop_first_demo,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -50,3 +55,13 @@ def sop_first_demo() -> dict:
 @app.post("/api/demos/runaway-loop")
 def runaway_loop_demo() -> dict:
     return run_runaway_loop_demo().as_dict()
+
+
+@app.post("/api/demos/retry-success")
+def retry_success_demo() -> dict:
+    return run_retry_success_demo().as_dict()
+
+
+@app.post("/api/demos/retry-budget")
+def retry_budget_demo() -> dict:
+    return run_retry_budget_demo().as_dict()
