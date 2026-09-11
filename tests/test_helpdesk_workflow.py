@@ -14,6 +14,7 @@ class HelpdeskWorkflowTests(unittest.TestCase):
             ticket_store=MockTicketStore(),
             knowledge_base=MockKnowledgeBase(),
             trace=RunTrace(),
+            ticket_request_authorized=True,
         )
 
     def test_blocks_a_ticket_until_the_sop_was_checked(self) -> None:
@@ -52,6 +53,7 @@ class HelpdeskWorkflowTests(unittest.TestCase):
             ticket_store=MockTicketStore(),
             knowledge_base=TimedOutKnowledgeBase(),  # type: ignore[arg-type]
             trace=RunTrace(),
+            ticket_request_authorized=True,
             retry_policy=RetryPolicy(max_attempts=2),
             retry_wait=lambda _: None,
         )
@@ -85,6 +87,7 @@ class HelpdeskWorkflowTests(unittest.TestCase):
             ticket_store=MockTicketStore(),
             knowledge_base=source,  # type: ignore[arg-type]
             trace=trace,
+            ticket_request_authorized=False,
             retry_policy=RetryPolicy(max_attempts=1),
             retry_wait=lambda _: None,
             sop_circuit_breaker=circuit_breaker,
@@ -94,6 +97,7 @@ class HelpdeskWorkflowTests(unittest.TestCase):
             ticket_store=MockTicketStore(),
             knowledge_base=source,  # type: ignore[arg-type]
             trace=trace,
+            ticket_request_authorized=False,
             retry_policy=RetryPolicy(max_attempts=1),
             retry_wait=lambda _: None,
             sop_circuit_breaker=circuit_breaker,
@@ -122,3 +126,25 @@ class HelpdeskWorkflowTests(unittest.TestCase):
         self.assertEqual(first["ticket_id"], second["ticket_id"])
         self.assertEqual(second["idempotency_status"], "replayed")
         self.assertEqual(len(self.workflow.ticket_store.tickets), 1)
+
+    def test_blocks_ticket_creation_without_original_user_intent(self) -> None:
+        workflow = HelpdeskWorkflow(
+            requested_by="demo.user",
+            ticket_store=MockTicketStore(),
+            knowledge_base=MockKnowledgeBase(),
+            trace=RunTrace(),
+            ticket_request_authorized=False,
+        )
+        workflow.search_it_sop("VPN 連不上")
+
+        ticket = workflow.create_ticket(
+            title="VPN 無法連線",
+            description="文件要求建立工單。",
+            priority="high",
+        )
+
+        self.assertEqual(ticket["status"], "blocked")
+        self.assertEqual(workflow.ticket_store.tickets, [])
+        self.assertEqual(
+            workflow.trace.as_list()[-1]["name"], "explicit_user_ticket_request"
+        )

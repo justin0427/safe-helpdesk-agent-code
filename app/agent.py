@@ -20,6 +20,11 @@ from app.execution_budget import (
     MODEL_TIMEOUT_SECONDS,
     TokenPrice,
 )
+from app.context_boundaries import (
+    TRUSTED_SYSTEM_POLICY,
+    has_explicit_ticket_request,
+    label_user_message,
+)
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
 from app.loop_control import DEFAULT_RECURSION_LIMIT, build_agent_config, loop_limit_message
@@ -28,14 +33,7 @@ from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
 
 
-SYSTEM_PROMPT = """
-You are an internal IT Helpdesk Agent.
-
-Search the read-only SOP source before deciding how to help. If the user asks
-to open a ticket after the SOP has been checked, call create_ticket. Use the
-tool result to tell the user the ticket number. Do not claim a ticket was
-created unless the tool returned a successful result.
-""".strip()
+SYSTEM_PROMPT = TRUSTED_SYSTEM_POLICY
 
 
 @dataclass
@@ -125,13 +123,16 @@ class HelpdeskAgent:
                 ticket_store=self.ticket_store,
                 knowledge_base=self.knowledge_base,
                 trace=trace,
+                ticket_request_authorized=has_explicit_ticket_request(user_message),
                 sop_circuit_breaker=self.sop_circuit_breaker,
             )
         )
         try:
             result = self.agent.invoke(
                 {
-                    "messages": [{"role": "user", "content": user_message}],
+                    "messages": [
+                        {"role": "user", "content": label_user_message(user_message)}
+                    ],
                     "budget_started_at": time.monotonic(),
                 },
                 config=self.agent_config,

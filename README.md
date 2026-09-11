@@ -24,16 +24,17 @@ cp .env.example .env
 uvicorn app.web:app --reload
 ```
 
-開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。頁面有七種操作：
+開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。頁面有八種操作：
 
 - 輸入問題，執行真正的 LangChain Agent。
 - 「查看 SOP 優先流程」不需要 API key，固定顯示先查 SOP、再建 mock 工單的軌跡。
 - 「SOP 逾時降級」不需要 API key，固定顯示唯讀查詢耗盡重試預算後，不建立工單的降級回覆。
 - 「服務熔斷」不需要 API key，固定讓 SOP 服務先失敗，再確認下一次查詢被 circuit breaker 直接擋下。
+- 「信任邊界」不需要 API key，固定取回含有惡意開單指令的 mock SOP，確認它不會取得寫入授權。
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
 - 「Token／成本上限」與「時間上限」不需要 API key，固定顯示執行預算用完後，停止下一次 Agent 動作。
 
-各示範的目的不同。SOP 示範驗證 Day 3 的工具順序與後端阻擋規則；SOP 逾時示範驗證 Day 4 的重試預算與降級回覆；服務熔斷對應 Day 8，讓相依服務已知失敗時後續請求直接降級。迴圈示範留給 Day 6；兩個預算示範對應 Day 7。實際 LangChain Agent 同時設定 LangGraph `recursion_limit`、LangChain model/tool call 上限、每次模型呼叫 timeout，以及單次輸出 token 上限。
+各示範的目的不同。SOP 示範驗證 Day 3 的工具順序與後端阻擋規則；SOP 逾時示範驗證 Day 4 的重試預算與降級回覆；服務熔斷對應 Day 8，讓相依服務已知失敗時後續請求直接降級；信任邊界對應 Day 10，讓文件內容不能自行授權寫入。迴圈示範留給 Day 6；兩個預算示範對應 Day 7。實際 LangChain Agent 同時設定 LangGraph `recursion_limit`、LangChain model/tool call 上限、每次模型呼叫 timeout，以及單次輸出 token 上限。
 
 若要啟用美元成本上限，還要依實際部署模型填入 `MODEL_INPUT_PER_MILLION_USD`、`MODEL_OUTPUT_PER_MILLION_USD` 與 `RUN_COST_BUDGET_USD`。價格留空時，Agent 仍有時間與 Token 上限，但不會猜測模型價格。
 

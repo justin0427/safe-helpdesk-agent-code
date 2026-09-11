@@ -29,6 +29,7 @@ class HelpdeskWorkflow:
     ticket_store: MockTicketStore
     knowledge_base: MockKnowledgeBase
     trace: RunTrace
+    ticket_request_authorized: bool
     sop_checked: bool = False
     retry_policy: RetryPolicy = DEFAULT_READ_ONLY_RETRY_POLICY
     retry_wait: Callable[[float], None] = time.sleep
@@ -80,6 +81,18 @@ class HelpdeskWorkflow:
         description: str,
         priority: Priority,
     ) -> dict[str, str]:
+        if not self.ticket_request_authorized:
+            self.trace.add(
+                kind="guardrail",
+                name="explicit_user_ticket_request",
+                status="blocked",
+                detail="原始使用者請求沒有明確要求開工單，拒絕寫入操作。",
+            )
+            return {
+                "status": "blocked",
+                "reason": "The original user request did not authorize ticket creation.",
+            }
+
         if not self.sop_checked:
             self.trace.add(
                 kind="guardrail",

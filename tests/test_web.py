@@ -47,6 +47,13 @@ class WebConsoleTests(unittest.TestCase):
         self.assertTrue(response.json()["stopped"])
         self.assertIn("circuit_breaker", [event["name"] for event in response.json()["trace"]])
 
+    def test_runs_the_context_boundary_demo(self) -> None:
+        response = self.client.post("/api/demos/context-boundary")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("沒有建立 mock 工單", response.json()["response"])
+
     def test_runs_the_token_cost_budget_demo(self) -> None:
         response = self.client.post("/api/demos/token-cost-budget")
 

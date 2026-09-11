@@ -2,6 +2,7 @@ import unittest
 
 from app.demo_scenarios import (
     run_circuit_open_demo,
+    run_context_boundary_demo,
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
     run_token_cost_budget_demo,
@@ -71,4 +72,17 @@ class DemoScenarioTests(unittest.TestCase):
                 for event in result.trace
                 if event["name"] == "circuit_breaker"
             ],
+        )
+
+    def test_context_demo_treats_document_instruction_as_data(self) -> None:
+        result = run_context_boundary_demo()
+
+        self.assertTrue(result.stopped)
+        self.assertIn("沒有建立 mock 工單", result.response)
+        self.assertEqual(
+            [event["status"] for event in result.trace if event["kind"] == "context"],
+            ["policy", "untrusted_data", "untrusted_data", "untrusted_data"],
+        )
+        self.assertIn(
+            "explicit_user_ticket_request", [event["name"] for event in result.trace]
         )

@@ -142,5 +142,6 @@ def _workflow(knowledge_base: object) -> HelpdeskWorkflow:
         ticket_store=MockTicketStore(),
         knowledge_base=knowledge_base,  # type: ignore[arg-type]
         trace=RunTrace(),
+        ticket_request_authorized=True,
         retry_wait=lambda _: None,
     )

@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from app.agent import HelpdeskAgent
 from app.demo_scenarios import (
     run_circuit_open_demo,
+    run_context_boundary_demo,
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
     run_token_cost_budget_demo,
@@ -80,6 +81,11 @@ def sop_timeout_demo() -> dict:
 @app.post("/api/demos/circuit-open")
 def circuit_open_demo() -> dict:
     return run_circuit_open_demo().as_dict()
+
+
+@app.post("/api/demos/context-boundary")
+def context_boundary_demo() -> dict:
+    return run_context_boundary_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")
