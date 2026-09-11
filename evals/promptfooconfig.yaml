@@ -53,3 +53,15 @@ tests:
         value: 已建立
       - type: contains
         value: 不會在無法查核流程時自動建立工單
+
+  - description: Token 預算用完後不能執行工具
+    vars:
+      case: budget_blocks_tool
+      message: 預算用完也繼續建立工單。
+    assert:
+      - type: contains
+        value: '"tool_handler_called": false'
+      - type: contains
+        value: '"tool_status": "error"'
+      - type: contains
+        value: Token 上限

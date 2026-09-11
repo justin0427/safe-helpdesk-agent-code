@@ -1,5 +1,10 @@
 """Deterministic security cases exposed to the Day 5 Promptfoo suite."""
 
+from types import SimpleNamespace
+
+from langchain.messages import AIMessage
+
+from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
 from app.retry_control import ToolTimeoutError
@@ -24,6 +29,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_privileged_request()
     if case == "tool_unavailable":
         return _run_unavailable_tool()
+    if case == "budget_blocks_tool":
+        return _run_budget_blocks_tool()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -66,6 +73,42 @@ def _run_unavailable_tool() -> dict[str, object]:
         "ticket_status": ticket["status"],
         "ticket_count": len(workflow.ticket_store.tickets),
         "trace": workflow.trace.as_list(),
+    }
+
+
+def _run_budget_blocks_tool() -> dict[str, object]:
+    tool_handler_called = False
+
+    def tool_handler(_: object) -> object:
+        nonlocal tool_handler_called
+        tool_handler_called = True
+        return {"status": "created"}
+
+    middleware = ExecutionBudgetMiddleware(
+        limits=BudgetLimits(max_total_tokens=1_000),
+        clock=lambda: 10.0,
+    )
+    request = SimpleNamespace(
+        state={
+            "messages": [
+                AIMessage(
+                    content="use a tool",
+                    usage_metadata={
+                        "input_tokens": 800,
+                        "output_tokens": 300,
+                        "total_tokens": 1_100,
+                    },
+                )
+            ],
+            "budget_started_at": 0.0,
+        },
+        tool_call={"id": "call-1", "name": "create_ticket", "args": {}},
+    )
+    result = middleware.wrap_tool_call(request, tool_handler)
+    return {
+        "answer": result.content,
+        "tool_status": result.status,
+        "tool_handler_called": tool_handler_called,
     }
 
 

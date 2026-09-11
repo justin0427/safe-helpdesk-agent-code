@@ -1,5 +1,6 @@
 from decimal import Decimal
 import unittest
+from types import SimpleNamespace
 
 from langchain.messages import AIMessage
 
@@ -57,3 +58,26 @@ class ExecutionBudgetTests(unittest.TestCase):
 
         self.assertEqual(update["jump_to"], "end")
         self.assertIn("Token", update["messages"][0].content)
+
+    def test_middleware_blocks_a_tool_after_token_limit(self) -> None:
+        middleware = ExecutionBudgetMiddleware(
+            limits=BudgetLimits(max_total_tokens=1_000),
+            clock=lambda: 10.0,
+        )
+        message = AIMessage(
+            content="use a tool",
+            usage_metadata={"input_tokens": 800, "output_tokens": 300, "total_tokens": 1_100},
+        )
+        request = SimpleNamespace(
+            state={"messages": [message], "budget_started_at": 0.0},
+            tool_call={"id": "call-1", "name": "create_ticket", "args": {}},
+        )
+
+        result = middleware.wrap_tool_call(
+            request,
+            handler=lambda _: self.fail("the tool handler must not run after the budget is used"),
+        )
+
+        self.assertEqual(result.tool_call_id, "call-1")
+        self.assertEqual(result.status, "error")
+        self.assertIn("Token", result.content)

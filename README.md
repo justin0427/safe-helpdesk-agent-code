@@ -36,6 +36,8 @@ uvicorn app.web:app --reload
 
 若要啟用美元成本上限，還要依實際部署模型填入 `MODEL_INPUT_PER_MILLION_USD`、`MODEL_OUTPUT_PER_MILLION_USD` 與 `RUN_COST_BUDGET_USD`。價格留空時，Agent 仍有時間與 Token 上限，但不會猜測模型價格。
 
+時間、Token 與成本預算會在模型呼叫前與工具執行前檢查。Token 與成本依 provider 回傳的 usage metadata 累積；provider 沒有回傳 usage 時，程式不會假裝知道實際花費。
+
 ## CLI（可選）
 
 如果只想從終端機試跑 Agent：
@@ -58,4 +60,4 @@ Day 5 的 deterministic security cases 不需要 OpenAI API key：
 npx --yes promptfoo@latest eval -c evals/promptfooconfig.yaml
 ```
 
-它會驗證正常開單、越權帳號重設請求、SOP 工具不可用，以及工具失敗時不得假裝成功。這份 suite 直接呼叫本機 mock workflow；後續接上真實模型後，會在同一份設定增加模型與 trajectory cases。
+它會驗證正常開單、越權帳號重設請求、SOP 工具不可用、工具失敗時不得假裝成功，以及 Token 預算用完後不得執行工具。這份 suite 直接呼叫本機 mock workflow；後續接上真實模型後，會在同一份設定增加模型與 trajectory cases。

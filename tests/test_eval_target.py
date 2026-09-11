@@ -23,3 +23,10 @@ class PromptfooEvaluationTargetTests(unittest.TestCase):
         self.assertEqual(result["ticket_status"], "blocked")
         self.assertEqual(result["ticket_count"], 0)
         self.assertNotIn("已建立", result["answer"])
+
+    def test_budget_blocks_a_tool_handler_after_token_limit(self) -> None:
+        result = run_security_case("budget_blocks_tool")
+
+        self.assertFalse(result["tool_handler_called"])
+        self.assertEqual(result["tool_status"], "error")
+        self.assertIn("Token", result["answer"])

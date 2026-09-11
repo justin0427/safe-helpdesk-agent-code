@@ -6,8 +6,13 @@ from decimal import Decimal
 import time
 from typing import Any
 
-from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
-from langchain.messages import AIMessage
+from langchain.agents.middleware import (
+    AgentMiddleware,
+    AgentState,
+    ToolCallRequest,
+    hook_config,
+)
+from langchain.messages import AIMessage, ToolMessage
 from typing_extensions import NotRequired
 
 
@@ -98,6 +103,25 @@ class ExecutionBudgetMiddleware(AgentMiddleware[BudgetState]):
 
     @hook_config(can_jump_to=["end"])
     def before_model(self, state: BudgetState, runtime: Any) -> dict[str, Any] | None:
+        exceeded = self._exceeded_limit(state)
+        if exceeded is None:
+            return None
+        return {
+            "messages": [AIMessage(content=_budget_stop_message(exceeded))],
+            "jump_to": "end",
+        }
+
+    def wrap_tool_call(self, request: ToolCallRequest, handler: Callable[[ToolCallRequest], Any]) -> Any:
+        exceeded = self._exceeded_limit(request.state)
+        if exceeded is None:
+            return handler(request)
+        return ToolMessage(
+            content=_budget_stop_message(exceeded),
+            tool_call_id=request.tool_call["id"],
+            status="error",
+        )
+
+    def _exceeded_limit(self, state: BudgetState) -> str | None:
         started_at = state.get("budget_started_at")
         if started_at is None:
             return None
@@ -114,20 +138,13 @@ class ExecutionBudgetMiddleware(AgentMiddleware[BudgetState]):
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                 )
-
-        exceeded = ledger.exceeded_limit(elapsed_seconds=self.clock() - started_at)
-        if exceeded is None:
-            return None
-        return {
-            "messages": [AIMessage(content=_budget_stop_message(exceeded))],
-            "jump_to": "end",
-        }
+        return ledger.exceeded_limit(elapsed_seconds=self.clock() - started_at)
 
 
 def _budget_stop_message(exceeded: str) -> str:
     messages = {
-        "time_budget": "Agent 已達執行時間上限，停止下一次模型呼叫。",
-        "token_budget": "Agent 已達 Token 上限，停止下一次模型呼叫。",
-        "cost_budget": "Agent 已達成本上限，停止下一次模型呼叫。",
+        "time_budget": "Agent 已達執行時間上限，停止後續 Agent 動作。",
+        "token_budget": "Agent 已達 Token 上限，停止後續 Agent 動作。",
+        "cost_budget": "Agent 已達成本上限，停止後續 Agent 動作。",
     }
     return messages[exceeded]
