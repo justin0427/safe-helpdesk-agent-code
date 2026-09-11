@@ -1,6 +1,7 @@
 import unittest
 
 from app.demo_scenarios import (
+    run_circuit_open_demo,
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
     run_token_cost_budget_demo,
@@ -47,3 +48,27 @@ class DemoScenarioTests(unittest.TestCase):
         self.assertIsNone(result.ticket)
         self.assertIn("不會在無法查核流程時自動建立工單", result.response)
         self.assertIn("sop_unavailable", [event["name"] for event in result.trace])
+
+    def test_circuit_demo_blocks_the_second_sop_request(self) -> None:
+        result = run_circuit_open_demo()
+
+        self.assertTrue(result.stopped)
+        self.assertIn("沒有再送出 SOP 請求", result.response)
+        self.assertEqual(
+            len(
+                [
+                    event
+                    for event in result.trace
+                    if event["name"] == "search_it_sop" and event["status"] == "failed"
+                ]
+            ),
+            2,
+        )
+        self.assertIn(
+            "blocked",
+            [
+                event["status"]
+                for event in result.trace
+                if event["name"] == "circuit_breaker"
+            ],
+        )

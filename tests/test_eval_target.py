@@ -30,3 +30,10 @@ class PromptfooEvaluationTargetTests(unittest.TestCase):
         self.assertFalse(result["tool_handler_called"])
         self.assertEqual(result["tool_status"], "error")
         self.assertIn("Token", result["answer"])
+
+    def test_circuit_breaker_stops_a_later_retry(self) -> None:
+        result = run_security_case("circuit_blocks_retry")
+
+        self.assertTrue(result["stopped"])
+        self.assertIn("沒有再送出 SOP 請求", result["answer"])
+        self.assertIn("blocked", [event["status"] for event in result["trace"]])

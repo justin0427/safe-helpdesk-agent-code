@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from langchain.messages import AIMessage
 
+from app.demo_scenarios import run_circuit_open_demo
 from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
@@ -31,6 +32,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_unavailable_tool()
     if case == "budget_blocks_tool":
         return _run_budget_blocks_tool()
+    if case == "circuit_blocks_retry":
+        return _run_circuit_blocks_retry()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -109,6 +112,15 @@ def _run_budget_blocks_tool() -> dict[str, object]:
         "answer": result.content,
         "tool_status": result.status,
         "tool_handler_called": tool_handler_called,
+    }
+
+
+def _run_circuit_blocks_retry() -> dict[str, object]:
+    result = run_circuit_open_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "trace": result.trace,
     }
 
 

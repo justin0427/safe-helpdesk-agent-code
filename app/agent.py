@@ -23,6 +23,7 @@ from app.execution_budget import (
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
 from app.loop_control import DEFAULT_RECURSION_LIMIT, build_agent_config, loop_limit_message
+from app.retry_control import CircuitBreaker
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
 
@@ -78,6 +79,7 @@ class HelpdeskAgent:
         input_price_per_million_usd: Decimal | None = None,
         output_price_per_million_usd: Decimal | None = None,
         max_cost_usd: Decimal | None = None,
+        sop_circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
         model = ChatOpenAI(
             model=model_name,
@@ -88,6 +90,7 @@ class HelpdeskAgent:
         self.requested_by = requested_by
         self.ticket_store = ticket_store or MockTicketStore()
         self.knowledge_base = knowledge_base or MockKnowledgeBase()
+        self.sop_circuit_breaker = sop_circuit_breaker or CircuitBreaker()
         self.agent_config = build_agent_config(recursion_limit)
         self.budget_limits = BudgetLimits(max_estimated_cost_usd=max_cost_usd)
         self.token_price = _token_price(
@@ -122,6 +125,7 @@ class HelpdeskAgent:
                 ticket_store=self.ticket_store,
                 knowledge_base=self.knowledge_base,
                 trace=trace,
+                sop_circuit_breaker=self.sop_circuit_breaker,
             )
         )
         try:

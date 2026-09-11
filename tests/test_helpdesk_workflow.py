@@ -2,7 +2,7 @@ import unittest
 
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
-from app.retry_control import RetryPolicy, ToolTimeoutError
+from app.retry_control import CircuitBreaker, RetryPolicy, ToolTimeoutError
 from app.run_trace import RunTrace
 from app.tickets import MockTicketStore
 
@@ -67,6 +67,44 @@ class HelpdeskWorkflowTests(unittest.TestCase):
         self.assertEqual(ticket["status"], "blocked")
         self.assertEqual(workflow.trace.as_list()[-2]["name"], "sop_unavailable")
         self.assertEqual(workflow.ticket_store.tickets, [])
+
+    def test_circuit_breaker_blocks_a_later_sop_request_without_calling_the_source(self) -> None:
+        class TimedOutKnowledgeBase:
+            calls = 0
+
+            def search(self, query: str) -> list[dict[str, str]]:
+                self.calls += 1
+                raise ToolTimeoutError("timeout")
+
+        source = TimedOutKnowledgeBase()
+        circuit_breaker = CircuitBreaker(failure_threshold=1, recovery_timeout_seconds=30)
+        trace = RunTrace()
+
+        first = HelpdeskWorkflow(
+            requested_by="demo.user",
+            ticket_store=MockTicketStore(),
+            knowledge_base=source,  # type: ignore[arg-type]
+            trace=trace,
+            retry_policy=RetryPolicy(max_attempts=1),
+            retry_wait=lambda _: None,
+            sop_circuit_breaker=circuit_breaker,
+        )
+        second = HelpdeskWorkflow(
+            requested_by="demo.user",
+            ticket_store=MockTicketStore(),
+            knowledge_base=source,  # type: ignore[arg-type]
+            trace=trace,
+            retry_policy=RetryPolicy(max_attempts=1),
+            retry_wait=lambda _: None,
+            sop_circuit_breaker=circuit_breaker,
+        )
+
+        first.search_it_sop("VPN 連不上")
+        result = second.search_it_sop("VPN 連不上")
+
+        self.assertEqual(result[0]["article_id"], "FALLBACK-SOP")
+        self.assertEqual(source.calls, 1)
+        self.assertEqual(trace.as_list()[-3]["status"], "blocked")
 
     def test_deduplicates_an_identical_ticket_within_one_run(self) -> None:
         self.workflow.search_it_sop("VPN 連不上")

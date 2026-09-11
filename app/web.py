@@ -12,12 +12,14 @@ from pydantic import BaseModel, Field
 
 from app.agent import HelpdeskAgent
 from app.demo_scenarios import (
+    run_circuit_open_demo,
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
     run_sop_first_demo,
 )
+from app.retry_control import CircuitBreaker
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -25,6 +27,7 @@ STATIC_DIR = BASE_DIR / "static"
 
 app = FastAPI(title="Safe Helpdesk Agent")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+SOP_CIRCUIT_BREAKER = CircuitBreaker()
 
 
 class AgentRequest(BaseModel):
@@ -52,6 +55,7 @@ def run_agent(request: AgentRequest) -> dict:
             input_price_per_million_usd=_decimal_env("MODEL_INPUT_PER_MILLION_USD"),
             output_price_per_million_usd=_decimal_env("MODEL_OUTPUT_PER_MILLION_USD"),
             max_cost_usd=_decimal_env("RUN_COST_BUDGET_USD"),
+            sop_circuit_breaker=SOP_CIRCUIT_BREAKER,
         )
     except ValueError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
@@ -71,6 +75,11 @@ def runaway_loop_demo() -> dict:
 @app.post("/api/demos/sop-timeout")
 def sop_timeout_demo() -> dict:
     return run_sop_timeout_fallback_demo().as_dict()
+
+
+@app.post("/api/demos/circuit-open")
+def circuit_open_demo() -> dict:
+    return run_circuit_open_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")

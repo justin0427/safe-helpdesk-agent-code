@@ -40,6 +40,13 @@ class WebConsoleTests(unittest.TestCase):
         self.assertTrue(response.json()["stopped"])
         self.assertIsNone(response.json()["ticket"])
 
+    def test_runs_the_circuit_breaker_demo(self) -> None:
+        response = self.client.post("/api/demos/circuit-open")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("circuit_breaker", [event["name"] for event in response.json()["trace"]])
+
     def test_runs_the_token_cost_budget_demo(self) -> None:
         response = self.client.post("/api/demos/token-cost-budget")
 

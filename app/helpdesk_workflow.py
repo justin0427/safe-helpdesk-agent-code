@@ -9,6 +9,8 @@ from uuid import uuid4
 
 from app.knowledge_base import MockKnowledgeBase
 from app.retry_control import (
+    CircuitBreaker,
+    CircuitOpenError,
     DEFAULT_READ_ONLY_RETRY_POLICY,
     RetryBudgetExhausted,
     RetryPolicy,
@@ -30,6 +32,7 @@ class HelpdeskWorkflow:
     sop_checked: bool = False
     retry_policy: RetryPolicy = DEFAULT_READ_ONLY_RETRY_POLICY
     retry_wait: Callable[[float], None] = time.sleep
+    sop_circuit_breaker: CircuitBreaker = field(default_factory=CircuitBreaker)
     execution_id: str = field(default_factory=lambda: uuid4().hex)
 
     def search_it_sop(self, query: str) -> list[dict[str, str]]:
@@ -40,8 +43,16 @@ class HelpdeskWorkflow:
                 policy=self.retry_policy,
                 trace=self.trace,
                 wait=self.retry_wait,
+                circuit_breaker=self.sop_circuit_breaker,
             )
-        except RetryBudgetExhausted:
+        except (RetryBudgetExhausted, CircuitOpenError) as error:
+            self.trace.add(
+                kind="escalation",
+                name="sop_service_outage",
+                status="required",
+                detail="SOP 服務無法使用，需由維運或人工確認後再處理。",
+                data={"reason": type(error).__name__},
+            )
             self.trace.add(
                 kind="fallback",
                 name="sop_unavailable",
@@ -52,7 +63,10 @@ class HelpdeskWorkflow:
                 {
                     "article_id": "FALLBACK-SOP",
                     "title": "SOP 暫時無法使用",
-                    "content": "請稍後再試；系統不會在無法查核流程時自動建立工單。",
+                    "content": (
+                        "請稍後再試；系統不會在無法查核流程時自動建立工單。"
+                        "若服務持續異常，需由人工確認。"
+                    ),
                 }
             ]
 

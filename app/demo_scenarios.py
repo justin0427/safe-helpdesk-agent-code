@@ -6,7 +6,7 @@ from app.helpdesk_workflow import HelpdeskWorkflow
 from app.execution_budget import BudgetLedger, BudgetLimits, TokenPrice
 from app.knowledge_base import MockKnowledgeBase
 from app.loop_control import DEFAULT_RECURSION_LIMIT, loop_limit_message
-from app.retry_control import ToolTimeoutError
+from app.retry_control import CircuitBreaker, RetryPolicy, ToolTimeoutError
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
 
@@ -102,6 +102,34 @@ def run_sop_timeout_fallback_demo() -> AgentRunResult:
         response=results[0]["content"],
         trace=trace.as_list(),
         ticket=None if ticket["status"] == "blocked" else ticket,
+        stopped=True,
+    )
+
+
+def run_circuit_open_demo() -> AgentRunResult:
+    """Show a later request failing fast after the SOP service stays unhealthy."""
+    trace = RunTrace()
+    circuit_breaker = CircuitBreaker(failure_threshold=1, recovery_timeout_seconds=30)
+
+    def workflow() -> HelpdeskWorkflow:
+        return HelpdeskWorkflow(
+            requested_by="demo.user",
+            ticket_store=MockTicketStore(),
+            knowledge_base=TimedOutSopSource(),  # type: ignore[arg-type]
+            trace=trace,
+            retry_policy=RetryPolicy(max_attempts=2),
+            retry_wait=lambda _: None,
+            sop_circuit_breaker=circuit_breaker,
+        )
+
+    workflow().search_it_sop("VPN 連不上")
+    results = workflow().search_it_sop("VPN 連不上")
+    return AgentRunResult(
+        response=(
+            "SOP 服務連續逾時後已開啟 circuit breaker；第二次查詢直接降級，"
+            "沒有再送出 SOP 請求，也沒有建立工單。"
+        ),
+        trace=trace.as_list(),
         stopped=True,
     )
 

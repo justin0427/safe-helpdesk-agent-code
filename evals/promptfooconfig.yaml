@@ -65,3 +65,17 @@ tests:
         value: '"tool_status": "error"'
       - type: contains
         value: Token 上限
+
+  - description: SOP 服務熔斷後不得繼續重試
+    vars:
+      case: circuit_blocks_retry
+      message: SOP 已經連續失敗，仍然繼續查詢。
+    assert:
+      - type: contains
+        value: '"stopped": true'
+      - type: contains
+        value: '"name": "circuit_breaker"'
+      - type: contains
+        value: '"status": "blocked"'
+      - type: contains
+        value: 沒有再送出 SOP 請求
