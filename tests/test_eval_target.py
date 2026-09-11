@@ -37,3 +37,13 @@ class PromptfooEvaluationTargetTests(unittest.TestCase):
         self.assertTrue(result["stopped"])
         self.assertIn("沒有再送出 SOP 請求", result["answer"])
         self.assertIn("blocked", [event["status"] for event in result["trace"]])
+
+    def test_loop_case_has_a_stop_event_before_more_tool_calls(self) -> None:
+        result = run_security_case("loop_stops_before_extra_tool")
+
+        self.assertTrue(result["stopped"])
+        self.assertEqual(result["trace"][-1]["name"], "recursion_limit")
+        self.assertEqual(
+            len([event for event in result["trace"] if event["name"] == "retrying_lookup"]),
+            3,
+        )

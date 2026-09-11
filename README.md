@@ -58,7 +58,7 @@ python -m unittest discover -s tests -v
 Day 5 的 deterministic security cases 不需要 OpenAI API key：
 
 ```bash
-npx --yes promptfoo@latest eval -c evals/promptfooconfig.yaml
+npx --yes promptfoo@latest eval -c evals/promptfooconfig.yaml --no-cache
 ```
 
-它會驗證正常開單、越權帳號重設請求、SOP 工具不可用、工具失敗時不得假裝成功、Token 預算用完後不得執行工具，以及服務熔斷後不得繼續重試。這份 suite 直接呼叫本機 mock workflow；後續接上真實模型後，會在同一份設定增加模型與 trajectory cases。
+它會驗證正常開單、越權帳號重設請求、SOP 工具不可用、工具失敗時不得假裝成功、Token 預算用完後不得執行工具，以及服務熔斷後不得繼續重試。Day 9 加入 Promptfoo OpenTelemetry tracing，讓 suite 也驗證工具順序、工具次數與停止事件；它直接呼叫本機 mock workflow，不需要 OpenAI API key。
