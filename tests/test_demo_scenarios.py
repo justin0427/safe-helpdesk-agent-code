@@ -90,7 +90,7 @@ class DemoScenarioTests(unittest.TestCase):
             ],
         )
 
-    def test_context_demo_treats_document_instruction_as_data(self) -> None:
+    def test_context_demo_keeps_document_recommendation_as_data(self) -> None:
         result = run_context_boundary_demo()
 
         self.assertTrue(result.stopped)
@@ -101,4 +101,7 @@ class DemoScenarioTests(unittest.TestCase):
         )
         self.assertIn(
             "explicit_user_ticket_request", [event["name"] for event in result.trace]
+        )
+        self.assertIn(
+            "retrieved_recommendation", [event["name"] for event in result.trace]
         )
