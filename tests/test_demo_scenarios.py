@@ -3,6 +3,7 @@ import unittest
 from app.demo_scenarios import (
     run_circuit_open_demo,
     run_context_boundary_demo,
+    run_external_share_blocked_demo,
     run_sop_timeout_fallback_demo,
     run_ticket_before_sop_demo,
     run_time_budget_demo,
@@ -33,6 +34,20 @@ class DemoScenarioTests(unittest.TestCase):
                 ("create_ticket", "requested"),
                 ("sop_first", "blocked"),
                 ("final_response", "completed"),
+            ],
+        )
+
+    def test_external_share_demo_stops_before_dispatch(self) -> None:
+        result = run_external_share_blocked_demo()
+
+        self.assertTrue(result.stopped)
+        self.assertIn("沒有發送任何資料", result.response)
+        self.assertEqual(
+            [(event["name"], event["status"]) for event in result.trace],
+            [
+                ("share_sop_excerpt", "requested"),
+                ("recipient_allowlist", "blocked"),
+                ("outbound_dispatch", "skipped"),
             ],
         )
 

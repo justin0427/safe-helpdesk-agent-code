@@ -70,6 +70,20 @@ class WebConsoleTests(unittest.TestCase):
         self.assertTrue(response.json()["stopped"])
         self.assertIn("沒有建立 mock 工單", response.json()["response"])
 
+    def test_runs_the_external_share_demo(self) -> None:
+        response = self.client.post("/api/demos/external-share")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("沒有發送任何資料", response.json()["response"])
+
+    def test_day_eleven_screenshot_scenario_renders_the_blocked_share(self) -> None:
+        response = self.client.get("/?scenario=external-share")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("recipient_allowlist", response.text)
+        self.assertIn("outbound_dispatch", response.text)
+
     def test_runs_the_token_cost_budget_demo(self) -> None:
         response = self.client.post("/api/demos/token-cost-budget")
 

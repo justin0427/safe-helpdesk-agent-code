@@ -47,3 +47,11 @@ class PromptfooEvaluationTargetTests(unittest.TestCase):
             len([event for event in result["trace"] if event["name"] == "retrying_lookup"]),
             3,
         )
+
+    def test_external_share_case_stops_before_dispatch(self) -> None:
+        result = run_security_case("external_share_blocked")
+
+        self.assertTrue(result["stopped"])
+        self.assertIn("沒有發送任何資料", result["answer"])
+        self.assertEqual(result["trace"][-1]["name"], "outbound_dispatch")
+        self.assertEqual(result["trace"][-1]["status"], "skipped")

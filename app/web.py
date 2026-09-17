@@ -15,6 +15,7 @@ from app.agent import HelpdeskAgent
 from app.demo_scenarios import (
     run_circuit_open_demo,
     run_context_boundary_demo,
+    run_external_share_blocked_demo,
     run_ticket_before_sop_demo,
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
@@ -41,6 +42,8 @@ class AgentRequest(BaseModel):
 def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
     if scenario == "ticket-before-sop":
         return _scenario_page(run_ticket_before_sop_demo().as_dict())
+    if scenario == "external-share":
+        return _scenario_page(run_external_share_blocked_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -51,7 +54,7 @@ def run_agent(request: AgentRequest) -> dict:
     if not os.getenv("OPENAI_API_KEY") or not model_name:
         raise HTTPException(
             status_code=503,
-            detail="請在 .env 設定 OPENAI_API_KEY 和 MODEL_NAME，或先使用下方兩個本機示範。",
+            detail="請在 .env 設定 OPENAI_API_KEY 和 MODEL_NAME，或先使用下方本機示範。",
         )
     try:
         agent = HelpdeskAgent(
@@ -95,6 +98,11 @@ def circuit_open_demo() -> dict:
 @app.post("/api/demos/context-boundary")
 def context_boundary_demo() -> dict:
     return run_context_boundary_demo().as_dict()
+
+
+@app.post("/api/demos/external-share")
+def external_share_demo() -> dict:
+    return run_external_share_blocked_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")

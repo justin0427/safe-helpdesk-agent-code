@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from langchain.messages import AIMessage
 
 from app.demo_scenarios import run_circuit_open_demo
+from app.demo_scenarios import run_external_share_blocked_demo
 from app.demo_scenarios import run_runaway_loop_demo
 from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
 from app.helpdesk_workflow import HelpdeskWorkflow
@@ -37,6 +38,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_circuit_blocks_retry()
     if case == "loop_stops_before_extra_tool":
         return _run_loop_stops_before_extra_tool()
+    if case == "external_share_blocked":
+        return _run_external_share_blocked()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -129,6 +132,15 @@ def _run_circuit_blocks_retry() -> dict[str, object]:
 
 def _run_loop_stops_before_extra_tool() -> dict[str, object]:
     result = run_runaway_loop_demo(recursion_limit=6)
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "trace": result.trace,
+    }
+
+
+def _run_external_share_blocked() -> dict[str, object]:
+    result = run_external_share_blocked_demo()
     return {
         "answer": result.response,
         "stopped": result.stopped,

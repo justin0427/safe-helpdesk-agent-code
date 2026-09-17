@@ -10,6 +10,7 @@ from app.loop_control import DEFAULT_RECURSION_LIMIT, loop_limit_message
 from app.retry_control import CircuitBreaker, RetryPolicy, ToolTimeoutError
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
+from app.tool_policy import EXTERNAL_SHARE_DEMO_POLICY, validate_tool_call
 
 
 def run_sop_first_demo() -> AgentRunResult:
@@ -74,6 +75,44 @@ def run_ticket_before_sop_demo() -> AgentRunResult:
     )
     return AgentRunResult(
         response="尚未查詢 SOP，已拒絕建立 mock 工單。請先取得流程資料後再決定是否開單。",
+        trace=trace.as_list(),
+        stopped=True,
+    )
+
+
+def run_external_share_blocked_demo() -> AgentRunResult:
+    """Show an outbound tool request stopping before any dispatch happens."""
+    trace = RunTrace()
+    arguments = {
+        "recipient": "outside@example.invalid",
+        "article_id": "SOP-VPN-001",
+    }
+    trace.add(
+        kind="tool",
+        name="share_sop_excerpt",
+        status="requested",
+        detail="示範嘗試將 mock SOP 摘要交給外部收件者。",
+    )
+    decision = validate_tool_call(
+        "share_sop_excerpt",
+        arguments,
+        policy=EXTERNAL_SHARE_DEMO_POLICY,
+    )
+    assert not decision.allowed
+    trace.add(
+        kind="guardrail",
+        name=decision.rule,
+        status="blocked",
+        detail=decision.detail,
+    )
+    trace.add(
+        kind="tool",
+        name="outbound_dispatch",
+        status="skipped",
+        detail="policy 拒絕後沒有執行任何對外發送 handler。",
+    )
+    return AgentRunResult(
+        response="收件者不在 allowlist，已拒絕外寄 mock SOP；沒有發送任何資料。",
         trace=trace.as_list(),
         stopped=True,
     )

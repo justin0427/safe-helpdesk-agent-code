@@ -31,6 +31,7 @@ from app.loop_control import DEFAULT_RECURSION_LIMIT, build_agent_config, loop_l
 from app.retry_control import CircuitBreaker
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
+from app.tool_policy import DEFAULT_AGENT_TOOL_POLICY
 
 
 SYSTEM_PROMPT = TRUSTED_SYSTEM_POLICY
@@ -63,6 +64,12 @@ def create_ticket(
         description=description,
         priority=priority,
     )
+
+
+AGENT_TOOLS = [search_it_sop, create_ticket]
+
+if frozenset(agent_tool.name for agent_tool in AGENT_TOOLS) != DEFAULT_AGENT_TOOL_POLICY.registered_tools:
+    raise RuntimeError("Agent tool registration and tool policy must stay in sync.")
 
 
 class HelpdeskAgent:
@@ -99,7 +106,7 @@ class HelpdeskAgent:
             raise ValueError("cost budget requires both input and output token prices")
         self.agent = create_agent(
             model=model,
-            tools=[search_it_sop, create_ticket],
+            tools=AGENT_TOOLS,
             context_schema=HelpdeskContext,
             system_prompt=SYSTEM_PROMPT,
             middleware=[
