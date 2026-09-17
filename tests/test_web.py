@@ -27,6 +27,22 @@ class WebConsoleTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["ticket"]["status"], "created")
 
+    def test_blocks_the_ticket_before_sop_demo(self) -> None:
+        response = self.client.post("/api/demos/ticket-before-sop")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIsNone(response.json()["ticket"])
+
+    def test_day_three_screenshot_scenario_renders_blocked_write(self) -> None:
+        response = self.client.get("/?scenario=ticket-before-sop")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("已安全停止", response.text)
+        self.assertIn("tool: create_ticket", response.text)
+        self.assertIn("guardrail: sop_first", response.text)
+        self.assertIn("尚未查詢 SOP，拒絕建立工單。", response.text)
+
     def test_runs_the_loop_stop_demo(self) -> None:
         response = self.client.post("/api/demos/runaway-loop")
 

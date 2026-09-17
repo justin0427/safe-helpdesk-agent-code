@@ -4,6 +4,7 @@ from app.demo_scenarios import (
     run_circuit_open_demo,
     run_context_boundary_demo,
     run_sop_timeout_fallback_demo,
+    run_ticket_before_sop_demo,
     run_time_budget_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
@@ -19,6 +20,21 @@ class DemoScenarioTests(unittest.TestCase):
         self.assertEqual(result.trace[0]["name"], "search_it_sop")
         self.assertEqual(result.trace[1]["name"], "create_ticket")
         self.assertEqual(result.ticket["status"], "created")
+
+    def test_ticket_before_sop_demo_blocks_the_write(self) -> None:
+        result = run_ticket_before_sop_demo()
+
+        self.assertTrue(result.stopped)
+        self.assertIsNone(result.ticket)
+        self.assertIn("拒絕建立 mock 工單", result.response)
+        self.assertEqual(
+            [(event["name"], event["status"]) for event in result.trace],
+            [
+                ("create_ticket", "requested"),
+                ("sop_first", "blocked"),
+                ("final_response", "completed"),
+            ],
+        )
 
     def test_runaway_loop_demo_stops_after_the_budget(self) -> None:
         result = run_runaway_loop_demo(recursion_limit=4)

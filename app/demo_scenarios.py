@@ -44,6 +44,41 @@ def run_sop_first_demo() -> AgentRunResult:
     )
 
 
+def run_ticket_before_sop_demo() -> AgentRunResult:
+    """Show the write tool refusing a request before the required read step."""
+    trace = RunTrace()
+    workflow = HelpdeskWorkflow(
+        requested_by="demo.user",
+        ticket_store=MockTicketStore(),
+        knowledge_base=MockKnowledgeBase(),
+        trace=trace,
+        ticket_request_authorized=True,
+    )
+    trace.add(
+        kind="tool",
+        name="create_ticket",
+        status="requested",
+        detail="示範在尚未查詢 SOP 時直接要求建立工單。",
+    )
+    ticket = workflow.create_ticket(
+        title="VPN 無法連線",
+        description="尚未查詢 SOP 的開單請求。",
+        priority="high",
+    )
+    assert ticket["status"] == "blocked"
+    trace.add(
+        kind="model",
+        name="final_response",
+        status="completed",
+        detail="說明開單要求被後端流程規則拒絕。",
+    )
+    return AgentRunResult(
+        response="尚未查詢 SOP，已拒絕建立 mock 工單。請先取得流程資料後再決定是否開單。",
+        trace=trace.as_list(),
+        stopped=True,
+    )
+
+
 def run_runaway_loop_demo(
     recursion_limit: int = DEFAULT_RECURSION_LIMIT,
 ) -> AgentRunResult:

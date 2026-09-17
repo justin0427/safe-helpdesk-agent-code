@@ -2,11 +2,12 @@
 
 from pathlib import Path
 from decimal import Decimal, InvalidOperation
+from html import escape
 import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -14,6 +15,7 @@ from app.agent import HelpdeskAgent
 from app.demo_scenarios import (
     run_circuit_open_demo,
     run_context_boundary_demo,
+    run_ticket_before_sop_demo,
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
     run_token_cost_budget_demo,
@@ -35,8 +37,10 @@ class AgentRequest(BaseModel):
     message: str = Field(min_length=1, max_length=1_000)
 
 
-@app.get("/", include_in_schema=False)
-def index() -> FileResponse:
+@app.get("/", include_in_schema=False, response_model=None)
+def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
+    if scenario == "ticket-before-sop":
+        return _scenario_page(run_ticket_before_sop_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -66,6 +70,11 @@ def run_agent(request: AgentRequest) -> dict:
 @app.post("/api/demos/sop-first")
 def sop_first_demo() -> dict:
     return run_sop_first_demo().as_dict()
+
+
+@app.post("/api/demos/ticket-before-sop")
+def ticket_before_sop_demo() -> dict:
+    return run_ticket_before_sop_demo().as_dict()
 
 
 @app.post("/api/demos/runaway-loop")
@@ -106,3 +115,30 @@ def _decimal_env(name: str) -> Decimal | None:
         return Decimal(value)
     except InvalidOperation as error:
         raise ValueError(f"{name} 必須是十進位數字") from error
+
+
+def _scenario_page(result: dict) -> HTMLResponse:
+    """Render a deterministic scenario snapshot for documentation screenshots."""
+    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    trace_items = "".join(
+        "<li><div>"
+        f'<span class="trace-name">{escape(event["kind"])}: {escape(event["name"])}</span>'
+        f'<span class="trace-detail">{escape(event["detail"])}</span>'
+        "</div>"
+        f'<span class="event-status {escape(event["status"])}">{escape(event["status"])}</span>'
+        "</li>"
+        for event in result["trace"]
+    )
+    page = page.replace(
+        '<p id="run-status" class="status">Ready</p>',
+        '<p id="run-status" class="status stopped">已安全停止</p>',
+    )
+    page = page.replace(
+        '<p id="response" class="response">從左側輸入問題，或先執行其中一個安全示範。</p>',
+        f'<p id="response" class="response">{escape(result["response"])}</p>',
+    )
+    page = page.replace(
+        '<li class="empty-state">等待新的 Agent run。模型、工具與 guardrail 事件會依序出現在這裡。</li>',
+        trace_items,
+    )
+    return HTMLResponse(page)
