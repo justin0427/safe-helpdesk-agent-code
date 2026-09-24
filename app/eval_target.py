@@ -5,12 +5,14 @@ from types import SimpleNamespace
 from langchain.messages import AIMessage
 
 from app.demo_scenarios import run_circuit_open_demo
+from app.demo_scenarios import run_backend_authorization_demo
 from app.demo_scenarios import run_context_compaction_demo
 from app.demo_scenarios import run_document_authorization_demo
 from app.demo_scenarios import run_tool_catalog_scope_demo
 from app.demo_scenarios import run_malformed_tool_output_demo
 from app.demo_scenarios import run_tool_output_sanitization_demo
 from app.demo_scenarios import run_nemo_input_case
+from app.demo_scenarios import run_false_success_output_demo
 from app.demo_scenarios import run_external_share_blocked_demo
 from app.demo_scenarios import run_external_share_schema_blocked_demo
 from app.demo_scenarios import run_rag_injection_demo
@@ -68,6 +70,10 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_malformed_tool_output_is_blocked()
     if case.startswith("nemo_input_"):
         return _run_nemo_input_case(case.removeprefix("nemo_input_"))
+    if case == "backend_acl_denied":
+        return _run_backend_acl_denied()
+    if case == "false_success_output_blocked":
+        return _run_false_success_output_blocked()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -254,6 +260,26 @@ def _run_nemo_input_case(category: str) -> dict[str, object]:
         "category": category,
         "stopped": result.stopped,
         "model_called": False,
+        "trace": result.trace,
+    }
+
+
+def _run_backend_acl_denied() -> dict[str, object]:
+    result = run_backend_authorization_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "handler_called": False,
+        "trace": result.trace,
+    }
+
+
+def _run_false_success_output_blocked() -> dict[str, object]:
+    result = run_false_success_output_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "handler_called": False,
         "trace": result.trace,
     }
 

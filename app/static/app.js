@@ -12,6 +12,7 @@ const toolCatalogButton = document.querySelector("#run-tool-catalog-demo");
 const externalShareButton = document.querySelector("#run-external-share-demo");
 const toolOutputButton = document.querySelector("#run-tool-output-demo");
 const nemoInputButton = document.querySelector("#run-nemo-input-demo");
+const backendAuthorizationButton = document.querySelector("#run-backend-authorization-demo");
 const loopButton = document.querySelector("#run-loop-demo");
 const tokenCostButton = document.querySelector("#run-token-cost-demo");
 const timeButton = document.querySelector("#run-time-demo");
@@ -27,7 +28,7 @@ function setStatus(text, state = "") {
 }
 
 function setBusy(isBusy) {
-  [runButton, sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, toolOutputButton, nemoInputButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
+  [runButton, sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, toolOutputButton, nemoInputButton, backendAuthorizationButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
     button.disabled = isBusy;
   });
 }
@@ -104,6 +105,7 @@ toolCatalogButton.addEventListener("click", () => request("/api/demos/tool-catal
 externalShareButton.addEventListener("click", () => request("/api/demos/external-share"));
 toolOutputButton.addEventListener("click", () => request("/api/demos/tool-output"));
 nemoInputButton.addEventListener("click", () => request("/api/demos/nemo-input-rails"));
+backendAuthorizationButton.addEventListener("click", () => request("/api/demos/backend-authorization"));
 loopButton.addEventListener("click", () => request("/api/demos/runaway-loop"));
 tokenCostButton.addEventListener("click", () => request("/api/demos/token-cost-budget"));
 timeButton.addEventListener("click", () => request("/api/demos/time-budget"));

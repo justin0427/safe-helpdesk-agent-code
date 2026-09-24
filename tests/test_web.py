@@ -170,6 +170,25 @@ class WebConsoleTests(unittest.TestCase):
         self.assertIn("model_call", response.text)
         self.assertNotIn("student@example.test", response.text)
 
+    def test_runs_the_backend_authorization_demo(self) -> None:
+        response = self.client.post("/api/demos/backend-authorization")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("工單沒有變更", response.json()["response"])
+
+    def test_day_nineteen_screenshot_renders_the_final_acl_denial(self) -> None:
+        response = self.client.get("/?scenario=backend-authorization")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("dialog_rail", response.text)
+        self.assertIn("execution_rail", response.text)
+        self.assertIn("api_scope", response.text)
+        self.assertIn("rbac", response.text)
+        self.assertIn("resource_acl", response.text)
+        self.assertIn("close_ticket_handler", response.text)
+        self.assertIn("output_rail", response.text)
+
     def test_day_fifteen_screenshot_scenario_renders_tool_reduction(self) -> None:
         response = self.client.get("/?scenario=tool-catalog")
 

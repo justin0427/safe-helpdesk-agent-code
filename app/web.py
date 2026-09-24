@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.agent import HelpdeskAgent
 from app.demo_scenarios import (
+    run_backend_authorization_demo,
     run_circuit_open_demo,
     run_context_compaction_demo,
     run_context_boundary_demo,
@@ -62,6 +63,8 @@ def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
         return _scenario_page(run_tool_output_sanitization_demo().as_dict())
     if scenario == "nemo-input-rails":
         return _scenario_page(run_nemo_input_rails_demo().as_dict())
+    if scenario == "backend-authorization":
+        return _scenario_page(run_backend_authorization_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -151,6 +154,11 @@ def tool_output_demo() -> dict:
 @app.post("/api/demos/nemo-input-rails")
 def nemo_input_rails_demo() -> dict:
     return run_nemo_input_rails_demo().as_dict()
+
+
+@app.post("/api/demos/backend-authorization")
+def backend_authorization_demo() -> dict:
+    return run_backend_authorization_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")

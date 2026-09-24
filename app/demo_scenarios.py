@@ -2,6 +2,12 @@
 
 from decimal import Decimal
 
+from app.authorization_boundary import (
+    MockTicketApi,
+    Principal as ApiPrincipal,
+    TicketRecord,
+    validate_agent_output,
+)
 from app.context_compaction import HistoryItem, prepare_history_context
 from app.context_boundaries import context_inventory
 from app.document_authorization import (
@@ -360,6 +366,94 @@ def run_nemo_input_rails_demo() -> AgentRunResult:
             "三組 mock 輸入分別命中 jailbreak、PII 與 Helpdesk policy 規則；"
             "全部在主要模型呼叫前停止。"
         ),
+        trace=trace.as_list(),
+        stopped=True,
+    )
+
+
+def run_backend_authorization_demo() -> AgentRunResult:
+    """Let agent rails pass while the resource server rejects a cross-tenant write."""
+    trace = RunTrace()
+    trace.add(
+        kind="guardrail",
+        name="dialog_rail",
+        status="allowed",
+        detail="對話中有明確的關閉工單要求，流程可以進入工具選擇。",
+    )
+    trace.add(
+        kind="guardrail",
+        name="execution_rail",
+        status="allowed",
+        detail="close_ticket 名稱與參數符合本次 mock execution policy。",
+    )
+
+    principal = ApiPrincipal(
+        subject="operator-a",
+        tenant_id="campus-a",
+        roles=frozenset({"helpdesk_operator"}),
+        scopes=frozenset({"tickets:close"}),
+    )
+    ticket = TicketRecord(ticket_id="TICKET-B-002", tenant_id="campus-b")
+    api_result = MockTicketApi().close_ticket(principal=principal, ticket=ticket)
+    for decision in api_result.authorization:
+        trace.add(
+            kind="authorization",
+            name=decision.rule,
+            status="allowed" if decision.allowed else "blocked",
+            detail=decision.detail,
+        )
+    trace.add(
+        kind="tool",
+        name="close_ticket_handler",
+        status="completed" if api_result.handler_called else "skipped",
+        detail=(
+            "mock 工單狀態已更新。"
+            if api_result.handler_called
+            else "ACL 拒絕後，狀態更新 handler 沒有執行。"
+        ),
+    )
+
+    candidate = "mock API 已拒絕這次操作；工單沒有變更。"
+    output = validate_agent_output(candidate, api_result)
+    trace.add(
+        kind="guardrail",
+        name="output_rail",
+        status="allowed" if output.allowed else "blocked",
+        detail=output.detail,
+    )
+    return AgentRunResult(
+        response=output.response,
+        trace=trace.as_list(),
+        stopped=True,
+    )
+
+
+def run_false_success_output_demo() -> AgentRunResult:
+    """Block a final answer that contradicts a denied backend operation."""
+    principal = ApiPrincipal(
+        subject="operator-a",
+        tenant_id="campus-a",
+        roles=frozenset({"helpdesk_operator"}),
+        scopes=frozenset({"tickets:close"}),
+    )
+    ticket = TicketRecord(ticket_id="TICKET-B-002", tenant_id="campus-b")
+    api_result = MockTicketApi().close_ticket(principal=principal, ticket=ticket)
+    output = validate_agent_output("已關閉 TICKET-B-002。", api_result)
+    trace = RunTrace()
+    trace.add(
+        kind="authorization",
+        name="resource_acl",
+        status="blocked",
+        detail="mock API 已拒絕跨 tenant 工單操作。",
+    )
+    trace.add(
+        kind="guardrail",
+        name="output_rail",
+        status="blocked",
+        detail=output.detail,
+    )
+    return AgentRunResult(
+        response=output.response,
         trace=trace.as_list(),
         stopped=True,
     )

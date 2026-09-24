@@ -1,6 +1,7 @@
 import unittest
 
 from app.demo_scenarios import (
+    run_backend_authorization_demo,
     run_circuit_open_demo,
     run_context_compaction_demo,
     run_context_boundary_demo,
@@ -19,6 +20,19 @@ from app.demo_scenarios import (
 
 
 class DemoScenarioTests(unittest.TestCase):
+    def test_backend_remains_authoritative_after_agent_rails_allow(self) -> None:
+        result = run_backend_authorization_demo()
+        events = [(event["name"], event["status"]) for event in result.trace]
+
+        self.assertTrue(result.stopped)
+        self.assertIn(("dialog_rail", "allowed"), events)
+        self.assertIn(("execution_rail", "allowed"), events)
+        self.assertIn(("api_scope", "allowed"), events)
+        self.assertIn(("rbac", "allowed"), events)
+        self.assertIn(("resource_acl", "blocked"), events)
+        self.assertIn(("close_ticket_handler", "skipped"), events)
+        self.assertIn(("output_rail", "allowed"), events)
+
     def test_nemo_input_demo_blocks_three_categories_before_model(self) -> None:
         result = run_nemo_input_rails_demo()
         rendered = str(result.as_dict())
