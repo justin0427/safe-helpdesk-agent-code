@@ -23,6 +23,7 @@ from app.demo_scenarios import (
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
     run_tool_catalog_scope_demo,
+    run_tool_output_sanitization_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
     run_sop_first_demo,
@@ -56,6 +57,8 @@ def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
         return _scenario_page(run_document_authorization_demo().as_dict())
     if scenario == "tool-catalog":
         return _scenario_page(run_tool_catalog_scope_demo().as_dict())
+    if scenario == "tool-output":
+        return _scenario_page(run_tool_output_sanitization_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -135,6 +138,11 @@ def document_authorization_demo() -> dict:
 @app.post("/api/demos/tool-catalog")
 def tool_catalog_demo() -> dict:
     return run_tool_catalog_scope_demo().as_dict()
+
+
+@app.post("/api/demos/tool-output")
+def tool_output_demo() -> dict:
+    return run_tool_output_sanitization_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")

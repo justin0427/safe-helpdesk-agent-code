@@ -10,6 +10,7 @@ const contextCompactionButton = document.querySelector("#run-context-compaction-
 const documentAuthorizationButton = document.querySelector("#run-document-authorization-demo");
 const toolCatalogButton = document.querySelector("#run-tool-catalog-demo");
 const externalShareButton = document.querySelector("#run-external-share-demo");
+const toolOutputButton = document.querySelector("#run-tool-output-demo");
 const loopButton = document.querySelector("#run-loop-demo");
 const tokenCostButton = document.querySelector("#run-token-cost-demo");
 const timeButton = document.querySelector("#run-time-demo");
@@ -25,7 +26,7 @@ function setStatus(text, state = "") {
 }
 
 function setBusy(isBusy) {
-  [runButton, sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
+  [runButton, sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, toolOutputButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
     button.disabled = isBusy;
   });
 }
@@ -100,6 +101,7 @@ contextCompactionButton.addEventListener("click", () => request("/api/demos/cont
 documentAuthorizationButton.addEventListener("click", () => request("/api/demos/document-authorization"));
 toolCatalogButton.addEventListener("click", () => request("/api/demos/tool-catalog"));
 externalShareButton.addEventListener("click", () => request("/api/demos/external-share"));
+toolOutputButton.addEventListener("click", () => request("/api/demos/tool-output"));
 loopButton.addEventListener("click", () => request("/api/demos/runaway-loop"));
 tokenCostButton.addEventListener("click", () => request("/api/demos/token-cost-budget"));
 timeButton.addEventListener("click", () => request("/api/demos/time-budget"));

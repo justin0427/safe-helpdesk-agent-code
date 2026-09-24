@@ -135,6 +135,24 @@ class WebConsoleTests(unittest.TestCase):
         self.assertFalse(response.json()["stopped"])
         self.assertIn("20 個候選工具", response.json()["response"])
 
+    def test_runs_the_tool_output_sanitization_demo(self) -> None:
+        response = self.client.post("/api/demos/tool-output")
+        rendered = response.text
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("model_visible_tool_result", rendered)
+        self.assertNotIn("MOCK_DB_PASSWORD", rendered)
+
+    def test_day_seventeen_screenshot_scenario_renders_sanitization(self) -> None:
+        response = self.client.get("/?scenario=tool-output")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("tool_result_instruction", response.text)
+        self.assertIn("error_detail_minimization", response.text)
+        self.assertIn("model_visible_tool_result", response.text)
+        self.assertNotIn("MOCK_DB_PASSWORD", response.text)
+
     def test_day_fifteen_screenshot_scenario_renders_tool_reduction(self) -> None:
         response = self.client.get("/?scenario=tool-catalog")
 

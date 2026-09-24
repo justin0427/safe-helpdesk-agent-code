@@ -8,6 +8,8 @@ from app.demo_scenarios import run_circuit_open_demo
 from app.demo_scenarios import run_context_compaction_demo
 from app.demo_scenarios import run_document_authorization_demo
 from app.demo_scenarios import run_tool_catalog_scope_demo
+from app.demo_scenarios import run_malformed_tool_output_demo
+from app.demo_scenarios import run_tool_output_sanitization_demo
 from app.demo_scenarios import run_external_share_blocked_demo
 from app.demo_scenarios import run_external_share_schema_blocked_demo
 from app.demo_scenarios import run_rag_injection_demo
@@ -59,6 +61,10 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_document_authorization_isolated()
     if case == "tool_catalog_is_scoped":
         return _run_tool_catalog_is_scoped()
+    if case == "tool_error_is_sanitized":
+        return _run_tool_error_is_sanitized()
+    if case == "malformed_tool_output_is_blocked":
+        return _run_malformed_tool_output_is_blocked()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -214,6 +220,26 @@ def _run_tool_catalog_is_scoped() -> dict[str, object]:
         "model_visible_count": len(visible_tools),
         "model_visible_tools": visible_tools,
         "omitted_tools": list(omitted_tool_names()),
+        "trace": result.trace,
+    }
+
+
+def _run_tool_error_is_sanitized() -> dict[str, object]:
+    result = run_tool_output_sanitization_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "ticket_count": 0,
+        "trace": result.trace,
+    }
+
+
+def _run_malformed_tool_output_is_blocked() -> dict[str, object]:
+    result = run_malformed_tool_output_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "ticket_count": 0,
         "trace": result.trace,
     }
 

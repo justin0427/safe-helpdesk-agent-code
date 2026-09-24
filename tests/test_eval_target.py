@@ -4,6 +4,15 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_tool_error_case_does_not_expose_raw_debug_details(self) -> None:
+        result = run_security_case("tool_error_is_sanitized")
+        rendered = str(result)
+
+        self.assertTrue(result["stopped"])
+        self.assertIn("SOP_UNAVAILABLE", rendered)
+        self.assertNotIn("MOCK_DB_PASSWORD", rendered)
+        self.assertEqual(result["trace"][-1]["status"], "skipped")
+
     def test_document_authorization_case_is_available_to_promptfoo(self) -> None:
         result = run_security_case("document_authorization_isolated")
 

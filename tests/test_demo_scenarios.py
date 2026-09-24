@@ -10,6 +10,7 @@ from app.demo_scenarios import (
     run_sop_timeout_fallback_demo,
     run_ticket_before_sop_demo,
     run_time_budget_demo,
+    run_tool_output_sanitization_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
     run_sop_first_demo,
@@ -17,6 +18,18 @@ from app.demo_scenarios import (
 
 
 class DemoScenarioTests(unittest.TestCase):
+    def test_tool_error_is_sanitized_before_model_context(self) -> None:
+        result = run_tool_output_sanitization_demo()
+        rendered = str(result.as_dict())
+
+        self.assertTrue(result.stopped)
+        self.assertIn("model_visible_tool_result", rendered)
+        self.assertIn("SOP_UNAVAILABLE", rendered)
+        self.assertNotIn("MOCK_DB_PASSWORD", rendered)
+        self.assertNotIn("postgresql://", rendered)
+        self.assertEqual(result.trace[-1]["name"], "create_ticket")
+        self.assertEqual(result.trace[-1]["status"], "skipped")
+
     def test_document_authorization_filters_tenant_acl_and_content(self) -> None:
         result = run_document_authorization_demo()
 
