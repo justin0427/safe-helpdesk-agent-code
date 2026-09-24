@@ -54,6 +54,8 @@ uvicorn app.web:app --reload
 - 「NeMo Input Rails」不需要 API key，讀取 Day 18 的 NeMo regex Input Rail 設定，固定顯示 jailbreak、PII 與超出 Helpdesk policy 的輸入在模型呼叫前被拒絕。
 - 「後端最終授權」固定顯示 Agent 前段允許後，跨 tenant 寫入仍被 resource ACL 拒絕。
 - 「記憶寫入邊界」固定顯示短期工作記憶、敏感資料拒絕、長期偏好核准與 tenant/session 隔離。
+- 「記憶查詢與刪除」固定顯示 PII 拒絕、保留期限、使用者隔離、到期清除與刪除後查無資料。
+- 「Memory poisoning」先重現未過濾記憶跨 session 留存，再顯示來源檢查、欄位 allowlist 與同一使用者核准如何阻止投毒。
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
 - 「Token／成本上限」與「時間上限」不需要 API key，固定顯示執行預算用完後，停止下一次 Agent 動作。
 
@@ -74,6 +76,10 @@ uvicorn app.web:app --reload
 若要重現 Day 17 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=tool-output`。固定情境會讓 mock SOP 工具回傳含有未定義欄位、指令式文字與除錯秘密的錯誤物件；頁面只顯示清理規則與固定公開錯誤，不會顯示原始內容。
 
 若要重現 Day 18 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=nemo-input-rails`。頁面會讀取 `guardrails/day18/config.yml` 的同一組 regex patterns，做不需 API key 的 deterministic preview。這個 preview 不會冒充完整的 NeMo runtime；要實際載入並執行同一份 Input Rail，先安裝 `.[guardrails]`，再執行 `python -m app.validate_nemo_input_config`。
+
+若要重現 Day 21 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=memory-governance`。固定情境會顯示保留期限被限制為 30 天、PII 沒有落地、跨使用者讀取被拒絕、短期資料到期清除，以及使用者刪除後剩下 0 筆長期記憶。
+
+若要重現 Day 22 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=memory-poisoning`。固定情境會先重現脆弱 store 接受 retrieval 指令並在下一個 session 重播，再顯示安全版本拒絕不可信來源，且只有同一位使用者核准的安全偏好能寫入。
 
 Day 14 的頁面是 deterministic preview，不會假裝 NeMo runtime 已執行。若要實際用 NeMo Guardrails 0.23.0 載入同一份設定：
 
@@ -116,4 +122,4 @@ Day 5 的 deterministic security cases 不需要 OpenAI API key：
 npx --yes promptfoo@latest eval -c evals/promptfooconfig.yaml --no-cache
 ```
 
-它會驗證正常開單、越權帳號重設請求、SOP 工具不可用、工具失敗時不得假裝成功、Token 預算用完後不得執行工具、服務熔斷後不得繼續重試、惡意 retrieval 內容不得取得工具授權，以及敏感歷史不得進入 model-visible context。Day 9 加入 Promptfoo OpenTelemetry tracing，讓 suite 也驗證工具順序、工具次數與停止事件；它直接呼叫本機 mock workflow，不需要 OpenAI API key。
+它會驗證正常開單、越權帳號重設請求、SOP 工具不可用、工具失敗時不得假裝成功、Token 預算用完後不得執行工具、服務熔斷後不得繼續重試、惡意 retrieval 內容不得取得工具授權、敏感歷史不得進入 model-visible context，以及記憶生命週期與 memory poisoning 防線。Day 9 加入 Promptfoo OpenTelemetry tracing，讓 suite 也驗證工具順序、工具次數與停止事件；Day 22 再把不可信記憶來源、核准等待與核准者 scope 做成固定回歸案例。這些測試直接呼叫本機 mock workflow，不需要 OpenAI API key。

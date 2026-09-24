@@ -28,6 +28,8 @@ from app.demo_scenarios import (
     run_tool_output_sanitization_demo,
     run_nemo_input_rails_demo,
     run_memory_boundary_demo,
+    run_memory_governance_demo,
+    run_memory_poisoning_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
     run_sop_first_demo,
@@ -72,6 +74,10 @@ def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
         return _scenario_page(run_backend_authorization_demo().as_dict())
     if scenario == "memory-boundary":
         return _scenario_page(run_memory_boundary_demo().as_dict())
+    if scenario == "memory-governance":
+        return _scenario_page(run_memory_governance_demo().as_dict())
+    if scenario == "memory-poisoning":
+        return _scenario_page(run_memory_poisoning_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -213,6 +219,16 @@ def backend_authorization_demo() -> dict:
 @app.post("/api/demos/memory-boundary")
 def memory_boundary_demo() -> dict:
     return run_memory_boundary_demo().as_dict()
+
+
+@app.post("/api/demos/memory-governance")
+def memory_governance_demo() -> dict:
+    return run_memory_governance_demo().as_dict()
+
+
+@app.post("/api/demos/memory-poisoning")
+def memory_poisoning_demo() -> dict:
+    return run_memory_poisoning_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")

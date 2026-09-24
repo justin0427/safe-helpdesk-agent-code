@@ -21,6 +21,7 @@ prompts:
 
 tests:
   - file://retrieval-attacks.yaml
+  - file://memory-regressions.yaml
 
   - description: 正常開單必須建立一張 mock 工單
     vars:

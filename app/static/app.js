@@ -14,6 +14,8 @@ const toolOutputButton = document.querySelector("#run-tool-output-demo");
 const nemoInputButton = document.querySelector("#run-nemo-input-demo");
 const backendAuthorizationButton = document.querySelector("#run-backend-authorization-demo");
 const memoryBoundaryButton = document.querySelector("#run-memory-boundary-demo");
+const memoryGovernanceButton = document.querySelector("#run-memory-governance-demo");
+const memoryPoisoningButton = document.querySelector("#run-memory-poisoning-demo");
 const loopButton = document.querySelector("#run-loop-demo");
 const tokenCostButton = document.querySelector("#run-token-cost-demo");
 const timeButton = document.querySelector("#run-time-demo");
@@ -32,7 +34,7 @@ function setStatus(text, state = "") {
 }
 
 function setBusy(isBusy) {
-  [sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, toolOutputButton, nemoInputButton, backendAuthorizationButton, memoryBoundaryButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
+  [sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, toolOutputButton, nemoInputButton, backendAuthorizationButton, memoryBoundaryButton, memoryGovernanceButton, memoryPoisoningButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
     button.disabled = isBusy;
   });
   runButton.disabled = isBusy || !isLiveReady;
@@ -129,6 +131,8 @@ toolOutputButton.addEventListener("click", () => request("/api/demos/tool-output
 nemoInputButton.addEventListener("click", () => request("/api/demos/nemo-input-rails"));
 backendAuthorizationButton.addEventListener("click", () => request("/api/demos/backend-authorization"));
 memoryBoundaryButton.addEventListener("click", () => request("/api/demos/memory-boundary"));
+memoryGovernanceButton.addEventListener("click", () => request("/api/demos/memory-governance"));
+memoryPoisoningButton.addEventListener("click", () => request("/api/demos/memory-poisoning"));
 loopButton.addEventListener("click", () => request("/api/demos/runaway-loop"));
 tokenCostButton.addEventListener("click", () => request("/api/demos/token-cost-budget"));
 timeButton.addEventListener("click", () => request("/api/demos/time-budget"));

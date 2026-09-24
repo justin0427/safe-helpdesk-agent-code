@@ -222,6 +222,42 @@ class WebConsoleTests(unittest.TestCase):
         self.assertIn("tenant_session_isolation", response.text)
         self.assertNotIn("MOCK-948201", response.text)
 
+    def test_day_twenty_one_screenshot_renders_memory_lifecycle(self) -> None:
+        response = self.client.get("/?scenario=memory-governance")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("memory_retention_capped", response.text)
+        self.assertIn("pii_memory_write", response.text)
+        self.assertIn("user_memory_isolation", response.text)
+        self.assertIn("retention_expiry", response.text)
+        self.assertIn("user_memory_delete", response.text)
+        self.assertIn("memory_after_delete", response.text)
+        self.assertNotIn("student21@example.test", response.text)
+
+    def test_day_twenty_two_screenshot_renders_memory_poisoning(self) -> None:
+        response = self.client.get("/?scenario=memory-poisoning")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("poisoned_memory_replay", response.text)
+        self.assertIn("untrusted_memory_source", response.text)
+        self.assertIn("memory_approval_required", response.text)
+        self.assertIn("memory_approval_scope", response.text)
+        self.assertIn("approved_memory_write", response.text)
+
+    def test_runs_day_twenty_one_memory_governance_demo(self) -> None:
+        response = self.client.post("/api/demos/memory-governance")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("剩下 0 筆記憶", response.json()["response"])
+
+    def test_runs_day_twenty_two_memory_poisoning_demo(self) -> None:
+        response = self.client.post("/api/demos/memory-poisoning")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("同一位使用者確認", response.json()["response"])
+
     def test_day_nineteen_screenshot_renders_the_final_acl_denial(self) -> None:
         response = self.client.get("/?scenario=backend-authorization")
 

@@ -7,6 +7,8 @@ from app.demo_scenarios import (
     run_context_boundary_demo,
     run_document_authorization_demo,
     run_external_share_blocked_demo,
+    run_memory_governance_demo,
+    run_memory_poisoning_demo,
     run_rag_injection_demo,
     run_sop_timeout_fallback_demo,
     run_ticket_before_sop_demo,
@@ -20,6 +22,30 @@ from app.demo_scenarios import (
 
 
 class DemoScenarioTests(unittest.TestCase):
+    def test_memory_governance_supports_query_expiry_and_delete(self) -> None:
+        result = run_memory_governance_demo()
+        events = [(event["name"], event["status"]) for event in result.trace]
+
+        self.assertTrue(result.stopped)
+        self.assertIn(("pii_memory_write", "blocked"), events)
+        self.assertIn(("user_memory_isolation", "blocked"), events)
+        self.assertIn(("retention_expiry", "purged"), events)
+        self.assertIn(("user_memory_delete", "allowed"), events)
+        self.assertIn(("memory_after_delete", "0_records"), events)
+        self.assertNotIn("student21@example.test", str(result.as_dict()))
+
+    def test_memory_poisoning_requires_scoped_approval(self) -> None:
+        result = run_memory_poisoning_demo()
+        events = [(event["name"], event["status"]) for event in result.trace]
+
+        self.assertTrue(result.stopped)
+        self.assertIn(("poisoned_memory_replay", "observed"), events)
+        self.assertIn(("untrusted_memory_source", "blocked"), events)
+        self.assertIn(("memory_approval_required", "pending"), events)
+        self.assertIn(("memory_approval_scope", "blocked"), events)
+        self.assertIn(("approved_memory_write", "allowed"), events)
+        self.assertEqual(result.trace[-1]["data"]["poison_visible_count"], 0)
+
     def test_backend_remains_authoritative_after_agent_rails_allow(self) -> None:
         result = run_backend_authorization_demo()
         events = [(event["name"], event["status"]) for event in result.trace]

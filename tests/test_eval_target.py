@@ -4,6 +4,26 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_memory_lifecycle_case_ends_with_no_records(self) -> None:
+        result = run_security_case("memory_lifecycle_governed")
+        rendered = str(result)
+
+        self.assertEqual(result["final_memory_count"], 0)
+        self.assertIn("memory_retention_capped", rendered)
+        self.assertIn("pii_memory_write", rendered)
+        self.assertIn("user_memory_isolation", rendered)
+        self.assertNotIn("student21@example.test", rendered)
+
+    def test_memory_poisoning_case_blocks_untrusted_sources(self) -> None:
+        result = run_security_case("memory_poisoning_sources_blocked")
+        rendered = str(result)
+
+        self.assertEqual(result["poison_visible_count"], 0)
+        self.assertEqual(result["approved_memory_count"], 1)
+        self.assertIn("untrusted_memory_source", rendered)
+        self.assertIn("memory_approval_required", rendered)
+        self.assertIn("memory_approval_scope", rendered)
+
     def test_memory_case_keeps_only_one_model_visible_record(self) -> None:
         result = run_security_case("memory_write_is_scoped")
         rendered = str(result)

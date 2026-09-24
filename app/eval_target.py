@@ -11,6 +11,8 @@ from app.demo_scenarios import run_document_authorization_demo
 from app.demo_scenarios import run_tool_catalog_scope_demo
 from app.demo_scenarios import run_malformed_tool_output_demo
 from app.demo_scenarios import run_memory_boundary_demo
+from app.demo_scenarios import run_memory_governance_demo
+from app.demo_scenarios import run_memory_poisoning_demo
 from app.demo_scenarios import run_tool_output_sanitization_demo
 from app.demo_scenarios import run_nemo_input_case
 from app.demo_scenarios import run_false_success_output_demo
@@ -77,6 +79,14 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_false_success_output_blocked()
     if case == "memory_write_is_scoped":
         return _run_memory_write_is_scoped()
+    if case == "memory_lifecycle_governed":
+        return _run_memory_lifecycle_governed()
+    if case == "memory_poisoning_sources_blocked":
+        return _run_memory_poisoning_regression()
+    if case == "memory_approval_required":
+        return _run_memory_poisoning_regression()
+    if case == "memory_approval_scope":
+        return _run_memory_poisoning_regression()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -293,6 +303,29 @@ def _run_memory_write_is_scoped() -> dict[str, object]:
         "answer": result.response,
         "stopped": result.stopped,
         "model_visible_memory_count": 1,
+        "trace": result.trace,
+    }
+
+
+def _run_memory_lifecycle_governed() -> dict[str, object]:
+    result = run_memory_governance_demo()
+    final_event = result.trace[-1]
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "final_memory_count": final_event["data"]["record_count"],
+        "trace": result.trace,
+    }
+
+
+def _run_memory_poisoning_regression() -> dict[str, object]:
+    result = run_memory_poisoning_demo()
+    final_event = result.trace[-1]
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "approved_memory_count": 1,
+        "poison_visible_count": final_event["data"]["poison_visible_count"],
         "trace": result.trace,
     }
 
