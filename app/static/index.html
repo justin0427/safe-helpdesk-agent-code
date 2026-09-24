@@ -27,7 +27,7 @@
           </div>
           <span class="step">01</span>
         </div>
-        <p class="intro">同一個頁面分成兩種模式：Live 模式真的呼叫設定的模型；測試模式用固定資料重現安全邊界。兩者的事件都會記錄在右側。</p>
+        <p class="intro">Day 11 之後的主實驗由你輸入 Prompt，真的呼叫模型，再由後端政策判斷工具、文件與記憶候選。固定資料只留作回歸測試。</p>
 
         <div class="mode-strip" aria-label="執行模式">
           <div class="mode-card live-mode">
@@ -47,17 +47,26 @@
           <span>兩種模式都只使用本機 mock SOP 與記憶體工單，不連公司帳號、通知或正式 ITSM；這不是沙盒。</span>
         </div>
 
-        <label for="message">訊息</label>
+        <label for="experiment-day">文章實驗</label>
+        <select id="experiment-day" aria-describedby="experiment-boundary" disabled>
+          <option>載入 Day 11–22 實驗中</option>
+        </select>
+        <p id="experiment-boundary" class="experiment-boundary">選擇文章天數後，可直接修改下方 Prompt。</p>
+
+        <label for="message">你要送給 Agent 的 Prompt</label>
         <textarea id="message" rows="8">VPN 連不上，從今天早上九點開始發生，請先查 SOP；如果仍無法排除，請幫我開一張高優先級工單。</textarea>
-        <button id="run-agent" class="primary" type="button" disabled>執行 Live LLM Agent</button>
+        <button id="run-agent" class="primary" type="button" disabled>執行 Live security experiment</button>
         <p class="hint">Live 模式需要在 <code>.env</code> 設定模型名稱與憑證；OpenAI-compatible 服務可再設定 <code>MODEL_BASE_URL</code>。頁面不會回傳 key 或端點位址。</p>
 
-        <div class="demo-actions" aria-label="不需 API key 的示範">
-          <div>
-            <p class="eyebrow">SAFE SCENARIOS</p>
-            <p>不需要 API key，也能看見預期的安全行為。</p>
-          </div>
-          <div class="scenario-buttons">
+        <details class="demo-actions">
+          <summary>
+            <span>
+              <span class="eyebrow">REGRESSION SCENARIOS</span>
+              <strong>開啟固定資料測試</strong>
+            </span>
+            <small>不呼叫 LLM，適合回歸測試與故障重現</small>
+          </summary>
+          <div class="scenario-buttons" aria-label="不需 API key 的固定資料測試">
             <button id="run-sop-demo" class="secondary" type="button">SOP 優先</button>
             <button id="run-ticket-before-sop-demo" class="secondary" type="button">先開單會被擋</button>
             <button id="run-sop-timeout-demo" class="secondary" type="button">SOP 逾時降級</button>
@@ -78,7 +87,7 @@
             <button id="run-token-cost-demo" class="secondary" type="button">Token／成本上限</button>
             <button id="run-time-demo" class="secondary" type="button">時間上限</button>
           </div>
-        </div>
+        </details>
       </section>
 
       <section class="result-panel" aria-live="polite" aria-labelledby="result-title">
@@ -89,7 +98,7 @@
           </div>
           <span class="step">02</span>
         </div>
-        <div class="status-row"><p id="run-status" class="status">Ready</p><span>每次執行都使用獨立的記憶體 mock 資料</span></div>
+        <div class="status-row"><p id="run-status" class="status">Ready</p><span id="run-evidence">等待你輸入 Prompt；Live trace 會標示真正的模型呼叫。</span></div>
 
         <div class="result-block">
           <div class="block-heading"><h3>Agent 回覆</h3><span>FINAL OUTPUT</span></div>
@@ -110,7 +119,7 @@
       </section>
     </main>
 
-    <footer><span>Safe Helpdesk Agent</span><span>Day 11–22 — Live LLM 主線與 deterministic security tests</span></footer>
+    <footer><span>Safe Helpdesk Agent</span><span>Day 11–22 — prompt-driven Live LLM experiments + deterministic regression tests</span></footer>
     <script src="static/app.js"></script>
   </body>
 </html>

@@ -17,7 +17,8 @@ body {
 }
 
 button,
-textarea { font: inherit; }
+textarea,
+select { font: inherit; }
 
 .app-header,
 .workbench,
@@ -141,6 +142,22 @@ footer {
 .safety-note strong { color: #b8e4ce; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; }
 
 label { display: block; margin-bottom: 9px; color: #dbe9df; font-size: 0.78rem; font-weight: 750; }
+select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 42px 0 14px;
+  border: 1px solid #587066;
+  border-radius: 10px;
+  color: #f2f8f3;
+  background: #1d382e;
+}
+select:focus { border-color: #9bd0b8; outline: 3px solid rgba(144, 207, 177, 0.18); }
+.experiment-boundary {
+  margin: 8px 0 22px;
+  color: #9fb8a9;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
 textarea {
   display: block;
   width: 100%;
@@ -181,17 +198,27 @@ button:disabled { cursor: not-allowed; opacity: 0.52; transform: none; }
 .hint code { color: #d9e9de; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .demo-actions {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 18px;
   margin-top: 34px;
   padding-top: 24px;
   border-top: 1px solid rgba(192, 220, 204, 0.18);
 }
-.demo-actions .eyebrow { margin-bottom: 7px; color: #8fbca6; }
-.demo-actions p:last-child { max-width: 188px; margin: 0; color: #acc2b4; font-size: 0.77rem; line-height: 1.5; }
-.scenario-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.demo-actions summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 48px;
+  cursor: pointer;
+  list-style: none;
+}
+.demo-actions summary::-webkit-details-marker { display: none; }
+.demo-actions summary::after { content: "+"; color: #aee0c7; font-size: 1.25rem; }
+.demo-actions[open] summary::after { content: "−"; }
+.demo-actions summary > span { display: grid; gap: 4px; }
+.demo-actions summary strong { color: #e6f2ea; font-size: 0.83rem; }
+.demo-actions summary small { max-width: 220px; color: #9fb5a7; font-size: 0.72rem; line-height: 1.45; text-align: right; }
+.demo-actions .eyebrow { margin: 0; color: #8fbca6; }
+.scenario-buttons { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 16px; }
 .secondary { min-height: 38px; padding: 8px 11px; border: 1px solid #587066; color: #d8e8de; background: transparent; font-size: 0.76rem; }
 .secondary:hover { border-color: #9bcbb6; background: rgba(158, 214, 183, 0.12); }
 
@@ -256,8 +283,7 @@ footer span:first-child { color: #50655a; font-weight: 800; }
   .app-header, .workbench, footer { width: min(100% - 32px, 620px); }
   .workbench { grid-template-columns: 1fr; }
   .composer-panel, .result-panel { padding: 28px 24px; }
-  .demo-actions { align-items: start; flex-direction: column; }
-  .scenario-buttons { justify-content: flex-start; }
+  .demo-actions summary { align-items: flex-start; }
 }
 
 @media (max-width: 540px) {

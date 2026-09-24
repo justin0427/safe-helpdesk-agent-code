@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from app.run_trace import AgentRunResult
 from app.web import app
 
 
@@ -15,6 +16,57 @@ class WebConsoleTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("Safe Helpdesk Agent", response.text)
+        self.assertIn("experiment-day", response.text)
+        self.assertIn("Live security experiment", response.text)
+
+    def test_lists_prompt_driven_experiments_for_days_eleven_through_twenty_two(self) -> None:
+        response = self.client.get("/api/experiments")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["day"] for item in response.json()], list(range(11, 23)))
+
+    def test_live_experiment_requires_model_configuration(self) -> None:
+        with patch("app.web.load_dotenv"), patch.dict("os.environ", {}, clear=True):
+            response = self.client.post(
+                "/api/experiments/run",
+                json={"day": 11, "message": "VPN 連不上"},
+            )
+
+        self.assertEqual(response.status_code, 503)
+
+    def test_live_experiment_runs_the_selected_day_and_prompt(self) -> None:
+        result = AgentRunResult(
+            response="live result",
+            trace=[
+                {
+                    "sequence": 1,
+                    "kind": "model",
+                    "name": "live_llm",
+                    "status": "completed",
+                    "detail": "real model completed",
+                    "data": {},
+                }
+            ],
+        )
+        with (
+            patch("app.web.load_dotenv"),
+            patch.dict(
+                "os.environ",
+                {"MODEL_NAME": "test-model", "MODEL_API_KEY": "test-key"},
+                clear=True,
+            ),
+            patch("app.web.OpenAIExperimentModel"),
+            patch("app.web.LiveExperimentRunner") as runner_class,
+        ):
+            runner_class.return_value.run.return_value = result
+            response = self.client.post(
+                "/api/experiments/run",
+                json={"day": 19, "message": "關閉 TICKET-B-002"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["response"], "live result")
+        runner_class.return_value.run.assert_called_once_with(19, "關閉 TICKET-B-002")
 
     def test_serves_the_console_stylesheet(self) -> None:
         response = self.client.get("/static/styles.css")

@@ -37,6 +37,11 @@ from app.demo_scenarios import (
 from app.retry_control import CircuitBreaker
 from app.nemo_input_preview import inspect_input_preview
 from app.model_settings import ModelSettings
+from app.live_experiments import (
+    LiveExperimentRunner,
+    OpenAIExperimentModel,
+    experiment_catalog,
+)
 from app.run_trace import AgentRunResult, RunTrace
 
 
@@ -49,6 +54,11 @@ SOP_CIRCUIT_BREAKER = CircuitBreaker()
 
 
 class AgentRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=1_000)
+
+
+class LiveExperimentRequest(BaseModel):
+    day: int = Field(ge=11, le=22)
     message: str = Field(min_length=1, max_length=1_000)
 
 
@@ -91,6 +101,33 @@ def runtime_status() -> dict[str, str | bool | None]:
         "provider": settings.provider_label,
         "deterministic_tests_ready": True,
     }
+
+
+@app.get("/api/experiments")
+def live_experiments() -> list[dict[str, object]]:
+    return experiment_catalog()
+
+
+@app.post("/api/experiments/run")
+def run_live_experiment(request: LiveExperimentRequest) -> dict:
+    load_dotenv()
+    settings = ModelSettings.from_env()
+    if not settings.is_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="請先在 .env 設定模型，才能執行 Live security experiment。",
+        )
+    assert settings.model_name is not None
+    assert settings.api_key is not None
+    runner = LiveExperimentRunner(
+        OpenAIExperimentModel(
+            model_name=settings.model_name,
+            api_key=settings.api_key,
+            base_url=settings.base_url,
+            timeout_seconds=_float_env("MODEL_TIMEOUT_SECONDS", MODEL_TIMEOUT_SECONDS),
+        )
+    )
+    return runner.run(request.day, request.message).as_dict()
 
 
 @app.post("/api/run")

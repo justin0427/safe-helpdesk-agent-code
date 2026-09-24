@@ -10,6 +10,7 @@ MemoryKind = Literal["working", "preference"]
 _SENSITIVE_PATTERNS = (
     re.compile(r"(?:password|passwd|密碼|備用碼)\s*[:：]?\s*\S+", re.IGNORECASE),
     re.compile(r"\b(?:sk|gho)_[A-Za-z0-9_\-]{8,}\b"),
+    re.compile(r"\bMOCK-\d{4,}\b", re.IGNORECASE),
 )
 
 

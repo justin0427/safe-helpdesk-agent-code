@@ -24,6 +24,14 @@ class SessionMemoryStoreTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.rule, "sensitive_memory_write")
 
+    def test_rejects_a_mock_backup_code_without_a_label(self) -> None:
+        decision = self.store.write(
+            MemoryRecord("campus-a", "session-1", "secret", "MOCK-948201", "working")
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.rule, "sensitive_memory_write")
+
     def test_requires_approval_for_persistent_preference(self) -> None:
         decision = self.store.write(
             MemoryRecord("campus-a", "session-1", "tone", "簡短回答", "preference")

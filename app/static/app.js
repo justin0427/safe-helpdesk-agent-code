@@ -1,4 +1,6 @@
 const message = document.querySelector("#message");
+const experimentDay = document.querySelector("#experiment-day");
+const experimentBoundary = document.querySelector("#experiment-boundary");
 const runButton = document.querySelector("#run-agent");
 const sopButton = document.querySelector("#run-sop-demo");
 const ticketBeforeSopButton = document.querySelector("#run-ticket-before-sop-demo");
@@ -26,7 +28,31 @@ const ticket = document.querySelector("#ticket");
 const trace = document.querySelector("#trace");
 const liveModeStatus = document.querySelector("#live-mode-status");
 const liveModeDetail = document.querySelector("#live-mode-detail");
+const runEvidence = document.querySelector("#run-evidence");
 let isLiveReady = false;
+let isExperimentCatalogReady = false;
+
+const scenarioButtons = [
+  sopButton,
+  ticketBeforeSopButton,
+  sopTimeoutButton,
+  circuitButton,
+  contextButton,
+  ragInjectionButton,
+  contextCompactionButton,
+  documentAuthorizationButton,
+  toolCatalogButton,
+  externalShareButton,
+  toolOutputButton,
+  nemoInputButton,
+  backendAuthorizationButton,
+  memoryBoundaryButton,
+  memoryGovernanceButton,
+  memoryPoisoningButton,
+  loopButton,
+  tokenCostButton,
+  timeButton,
+];
 
 function setStatus(text, state = "") {
   status.textContent = text;
@@ -34,10 +60,11 @@ function setStatus(text, state = "") {
 }
 
 function setBusy(isBusy) {
-  [sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, toolOutputButton, nemoInputButton, backendAuthorizationButton, memoryBoundaryButton, memoryGovernanceButton, memoryPoisoningButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
+  scenarioButtons.forEach((button) => {
     button.disabled = isBusy;
   });
-  runButton.disabled = isBusy || !isLiveReady;
+  experimentDay.disabled = isBusy || !isExperimentCatalogReady;
+  runButton.disabled = isBusy || !isLiveReady || !isExperimentCatalogReady;
 }
 
 async function loadRuntimeStatus() {
@@ -53,8 +80,40 @@ async function loadRuntimeStatus() {
     liveModeStatus.textContent = "狀態無法讀取";
     liveModeDetail.textContent = "deterministic tests 仍可使用。";
   } finally {
-    runButton.disabled = !isLiveReady;
+    runButton.disabled = !isLiveReady || !isExperimentCatalogReady;
   }
+}
+
+async function loadExperimentCatalog() {
+  try {
+    const result = await fetch("/api/experiments");
+    const experiments = await result.json();
+    experimentDay.replaceChildren();
+    experiments.forEach((experiment) => {
+      const option = document.createElement("option");
+      option.value = String(experiment.day);
+      option.textContent = `Day ${experiment.day}｜${experiment.title}`;
+      option.dataset.prompt = experiment.prompt;
+      option.dataset.boundary = experiment.expected_boundary;
+      experimentDay.append(option);
+    });
+    isExperimentCatalogReady = true;
+    experimentDay.disabled = false;
+    selectExperiment();
+  } catch (_error) {
+    experimentDay.replaceChildren(new Option("實驗清單無法載入", ""));
+    experimentBoundary.textContent = "請重新整理頁面後再試。";
+  } finally {
+    runButton.disabled = !isLiveReady || !isExperimentCatalogReady;
+  }
+}
+
+function selectExperiment() {
+  const option = experimentDay.selectedOptions[0];
+  if (!option) return;
+  message.value = option.dataset.prompt || "";
+  experimentBoundary.textContent = `本次主要邊界：${option.dataset.boundary || "server-side policy"}`;
+  runButton.textContent = `執行 Day ${option.value} Live 測試`;
 }
 
 function renderTrace(events) {
@@ -96,9 +155,10 @@ function renderResult(result) {
   setStatus(result.stopped ? "已安全停止" : "完成", result.stopped ? "stopped" : "success");
 }
 
-async function request(url, body) {
+async function request(url, body, evidence = "固定資料回歸測試；本次沒有呼叫 LLM。") {
   setBusy(true);
   setStatus("執行中", "running");
+  runEvidence.textContent = evidence;
   try {
     const options = { method: "POST", headers: { "Content-Type": "application/json" } };
     if (body) options.body = JSON.stringify(body);
@@ -116,7 +176,20 @@ async function request(url, body) {
   }
 }
 
-runButton.addEventListener("click", () => request("/api/run", { message: message.value.trim() }));
+experimentDay.addEventListener("change", selectExperiment);
+runButton.addEventListener("click", () => {
+  const prompt = message.value.trim();
+  if (!prompt) {
+    response.textContent = "請先輸入 Prompt。";
+    setStatus("無法執行", "error");
+    return;
+  }
+  request(
+    "/api/experiments/run",
+    { day: Number(experimentDay.value), message: prompt },
+    "Prompt 由你輸入；trace 中的 live_llm requested／completed 代表真正模型呼叫。",
+  );
+});
 sopButton.addEventListener("click", () => request("/api/demos/sop-first"));
 ticketBeforeSopButton.addEventListener("click", () => request("/api/demos/ticket-before-sop"));
 sopTimeoutButton.addEventListener("click", () => request("/api/demos/sop-timeout"));
@@ -138,3 +211,4 @@ tokenCostButton.addEventListener("click", () => request("/api/demos/token-cost-b
 timeButton.addEventListener("click", () => request("/api/demos/time-budget"));
 
 loadRuntimeStatus();
+loadExperimentCatalog();
