@@ -114,6 +114,21 @@ class WebConsoleTests(unittest.TestCase):
         self.assertIn("post_retrieval_authorization", response.text)
         self.assertIn("nemo_regex_retrieval_rail", response.text)
 
+    def test_runs_the_tool_catalog_demo(self) -> None:
+        response = self.client.post("/api/demos/tool-catalog")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["stopped"])
+        self.assertIn("20 個候選工具", response.json()["response"])
+
+    def test_day_fifteen_screenshot_scenario_renders_tool_reduction(self) -> None:
+        response = self.client.get("/?scenario=tool-catalog")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("full_tool_catalog", response.text)
+        self.assertIn("model_visible_tools", response.text)
+        self.assertIn("unneeded_tools", response.text)
+
     def test_day_twelve_screenshot_scenario_renders_context_decisions(self) -> None:
         response = self.client.get("/?scenario=context-compaction")
 

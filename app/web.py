@@ -22,6 +22,7 @@ from app.demo_scenarios import (
     run_ticket_before_sop_demo,
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
+    run_tool_catalog_scope_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
     run_sop_first_demo,
@@ -53,6 +54,8 @@ def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
         return _scenario_page(run_context_compaction_demo().as_dict())
     if scenario == "document-authorization":
         return _scenario_page(run_document_authorization_demo().as_dict())
+    if scenario == "tool-catalog":
+        return _scenario_page(run_tool_catalog_scope_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -129,6 +132,11 @@ def document_authorization_demo() -> dict:
     return run_document_authorization_demo().as_dict()
 
 
+@app.post("/api/demos/tool-catalog")
+def tool_catalog_demo() -> dict:
+    return run_tool_catalog_scope_demo().as_dict()
+
+
 @app.post("/api/demos/token-cost-budget")
 def token_cost_budget_demo() -> dict:
     return run_token_cost_budget_demo().as_dict()
@@ -161,9 +169,11 @@ def _scenario_page(result: dict) -> HTMLResponse:
         "</li>"
         for event in result["trace"]
     )
+    status_class = "stopped" if result["stopped"] else "success"
+    status_text = "已安全停止" if result["stopped"] else "完成"
     page = page.replace(
         '<p id="run-status" class="status">Ready</p>',
-        '<p id="run-status" class="status stopped">已安全停止</p>',
+        f'<p id="run-status" class="status {status_class}">{status_text}</p>',
     )
     page = page.replace(
         '<p id="response" class="response">從左側輸入問題，或先執行其中一個安全示範。</p>',

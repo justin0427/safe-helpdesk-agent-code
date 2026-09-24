@@ -7,6 +7,7 @@ from langchain.messages import AIMessage
 from app.demo_scenarios import run_circuit_open_demo
 from app.demo_scenarios import run_context_compaction_demo
 from app.demo_scenarios import run_document_authorization_demo
+from app.demo_scenarios import run_tool_catalog_scope_demo
 from app.demo_scenarios import run_external_share_blocked_demo
 from app.demo_scenarios import run_rag_injection_demo
 from app.demo_scenarios import run_runaway_loop_demo
@@ -17,6 +18,7 @@ from app.retry_control import ToolTimeoutError
 from app.retrieval_attack_corpus import run_retrieval_attack
 from app.run_trace import RunTrace
 from app.tickets import MockTicketStore
+from app.tool_catalog import TOOL_CATALOG, omitted_tool_names, tools_for_helpdesk_triage
 
 
 AVAILABLE_TOOL_NAMES = ("search_it_sop", "create_ticket")
@@ -52,6 +54,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_context_is_minimized()
     if case == "document_authorization_isolated":
         return _run_document_authorization_isolated()
+    if case == "tool_catalog_is_scoped":
+        return _run_tool_catalog_is_scoped()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -184,6 +188,19 @@ def _run_document_authorization_isolated() -> dict[str, object]:
     return {
         "answer": result.response,
         "stopped": result.stopped,
+        "trace": result.trace,
+    }
+
+
+def _run_tool_catalog_is_scoped() -> dict[str, object]:
+    result = run_tool_catalog_scope_demo()
+    visible_tools = [tool.name for tool in tools_for_helpdesk_triage()]
+    return {
+        "answer": result.response,
+        "catalog_count": len(TOOL_CATALOG),
+        "model_visible_count": len(visible_tools),
+        "model_visible_tools": visible_tools,
+        "omitted_tools": list(omitted_tool_names()),
         "trace": result.trace,
     }
 

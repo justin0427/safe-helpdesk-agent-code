@@ -19,6 +19,7 @@ from app.retry_control import CircuitBreaker, RetryPolicy, ToolTimeoutError
 from app.retrieval_boundary import filter_retrieved_documents
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
+from app.tool_catalog import TOOL_CATALOG, omitted_tool_names, tools_for_helpdesk_triage
 from app.tool_policy import EXTERNAL_SHARE_DEMO_POLICY, validate_tool_call
 
 
@@ -124,6 +125,48 @@ def run_external_share_blocked_demo() -> AgentRunResult:
         response="收件者不在 allowlist，已拒絕外寄 mock SOP；沒有發送任何資料。",
         trace=trace.as_list(),
         stopped=True,
+    )
+
+
+def run_tool_catalog_scope_demo() -> AgentRunResult:
+    """Compare a broad catalog with the task-scoped tools shown to the model."""
+    trace = RunTrace()
+    model_visible_tools = tools_for_helpdesk_triage()
+    omitted_tools = omitted_tool_names()
+    trace.add(
+        kind="catalog",
+        name="full_tool_catalog",
+        status="inspected",
+        detail=f"應用程式共有 {len(TOOL_CATALOG)} 個候選工具。",
+        data={"tool_count": len(TOOL_CATALOG)},
+    )
+    trace.add(
+        kind="guardrail",
+        name="task_capability_scope",
+        status="applied",
+        detail="目前任務只需要 SOP 查詢與建立 mock 工單。",
+        data={"required_capabilities": ["sop_search", "ticket_create"]},
+    )
+    trace.add(
+        kind="catalog",
+        name="model_visible_tools",
+        status="2_tools",
+        detail="模型只看得到 search_it_sop 與 create_ticket。",
+        data={"tools": [tool.name for tool in model_visible_tools]},
+    )
+    trace.add(
+        kind="guardrail",
+        name="unneeded_tools",
+        status="omitted",
+        detail=f"其餘 {len(omitted_tools)} 個重疊或高風險工具沒有註冊給 Agent。",
+        data={"omitted_tools": list(omitted_tools)},
+    )
+    return AgentRunResult(
+        response=(
+            f"20 個候選工具中，只有 {len(model_visible_tools)} 個進入模型可見工具集。"
+            "未註冊的工具不會只靠 prompt 隱藏，而是不會出現在本次 Agent 的工具 schema。"
+        ),
+        trace=trace.as_list(),
     )
 
 
