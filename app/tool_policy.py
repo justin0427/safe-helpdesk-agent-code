@@ -54,6 +54,16 @@ DEFAULT_AGENT_TOOL_POLICY = ToolPolicy(
     allowed_operations=frozenset({"read", "write"}),
 )
 
+READ_ONLY_HELPDESK_POLICY = ToolPolicy(
+    registered_tools=frozenset({"search_it_sop"}),
+    allowed_operations=frozenset({"read"}),
+)
+
+TICKET_WRITER_POLICY = ToolPolicy(
+    registered_tools=frozenset({"create_ticket"}),
+    allowed_operations=frozenset({"write"}),
+)
+
 EXTERNAL_SHARE_DEMO_POLICY = ToolPolicy(
     registered_tools=frozenset({"share_sop_excerpt"}),
     allowed_operations=frozenset({"write"}),
@@ -70,33 +80,71 @@ def validate_tool_call(
     *,
     policy: ToolPolicy,
 ) -> ToolDecision:
-    """Reject unregistered tools and malformed or over-broad tool arguments."""
+    """Return the first rejected rule, or the final allow decision."""
+    decisions = validate_tool_call_steps(tool_name, arguments, policy=policy)
+    return next((decision for decision in decisions if not decision.allowed), decisions[-1])
+
+
+def validate_tool_call_steps(
+    tool_name: str,
+    arguments: Mapping[str, object],
+    *,
+    policy: ToolPolicy,
+) -> tuple[ToolDecision, ...]:
+    """Evaluate each server-side gate in order for audit and testing."""
+    decisions: list[ToolDecision] = []
     schema = TOOL_SCHEMAS.get(tool_name)
     if schema is None or tool_name not in policy.registered_tools:
-        return ToolDecision(False, "tool_allowlist", "這個工具沒有註冊給目前的 Agent。")
+        return (ToolDecision(False, "tool_allowlist", "這個工具沒有註冊給目前的 Agent。"),)
+    decisions.append(ToolDecision(True, "tool_allowlist", "工具已註冊給目前的執行角色。"))
 
     if schema.operation not in policy.allowed_operations:
-        return ToolDecision(False, "operation_boundary", "目前的 Agent 不具備這種操作權限。")
+        decisions.append(
+            ToolDecision(False, "operation_boundary", "目前的 Agent 不具備這種操作權限。")
+        )
+        return tuple(decisions)
+    decisions.append(
+        ToolDecision(True, "operation_boundary", f"允許 {schema.operation} 類型操作。")
+    )
 
     argument_names = set(arguments)
     if argument_names != schema.required_arguments:
-        return ToolDecision(
-            False,
-            "tool_schema",
-            "工具參數和預先定義的 schema 不一致。",
+        decisions.append(
+            ToolDecision(
+                False,
+                "tool_schema",
+                "工具參數和預先定義的 schema 不一致。",
+            )
         )
+        return tuple(decisions)
 
     if not all(isinstance(value, str) and value.strip() for value in arguments.values()):
-        return ToolDecision(False, "tool_schema", "工具參數必須是非空白字串。")
+        decisions.append(ToolDecision(False, "tool_schema", "工具參數必須是非空白字串。"))
+        return tuple(decisions)
+    decisions.append(ToolDecision(True, "tool_schema", "參數名稱與非空白字串檢查通過。"))
+
+    if tool_name == "create_ticket" and arguments["priority"] not in {"low", "medium", "high"}:
+        decisions.append(
+            ToolDecision(False, "priority_allowlist", "priority 不在允許值內。")
+        )
+        return tuple(decisions)
 
     if tool_name != "share_sop_excerpt":
-        return ToolDecision(True, "allowed", "工具名稱、操作類型與參數都符合 policy。")
+        decisions.append(ToolDecision(True, "allowed", "工具名稱、操作類型與參數都符合 policy。"))
+        return tuple(decisions)
 
-    recipient = str(arguments["recipient"])
+    recipient = str(arguments["recipient"]).strip().lower()
     if not _EMAIL_PATTERN.fullmatch(recipient):
-        return ToolDecision(False, "recipient_format", "收件者格式不合法。")
+        decisions.append(ToolDecision(False, "recipient_format", "收件者格式不合法。"))
+        return tuple(decisions)
+    decisions.append(ToolDecision(True, "recipient_format", "收件者格式檢查通過。"))
     if recipient not in policy.recipient_allowlist:
-        return ToolDecision(False, "recipient_allowlist", "收件者不在允許名單內。")
+        decisions.append(ToolDecision(False, "recipient_allowlist", "收件者不在允許名單內。"))
+        return tuple(decisions)
+    decisions.append(ToolDecision(True, "recipient_allowlist", "收件者在允許名單內。"))
     if str(arguments["article_id"]) not in policy.article_allowlist:
-        return ToolDecision(False, "article_allowlist", "這份 SOP 不允許外寄。")
-    return ToolDecision(True, "allowed", "工具名稱、收件者與 SOP 範圍都符合 policy。")
+        decisions.append(ToolDecision(False, "article_allowlist", "這份 SOP 不允許外寄。"))
+        return tuple(decisions)
+    decisions.append(ToolDecision(True, "article_allowlist", "SOP 在允許外寄的範圍內。"))
+    decisions.append(ToolDecision(True, "allowed", "工具名稱、收件者與 SOP 範圍都符合 policy。"))
+    return tuple(decisions)

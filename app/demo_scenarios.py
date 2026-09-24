@@ -20,7 +20,7 @@ from app.retrieval_boundary import filter_retrieved_documents
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
 from app.tool_catalog import TOOL_CATALOG, omitted_tool_names, tools_for_helpdesk_triage
-from app.tool_policy import EXTERNAL_SHARE_DEMO_POLICY, validate_tool_call
+from app.tool_policy import EXTERNAL_SHARE_DEMO_POLICY, validate_tool_call_steps
 
 
 def run_sop_first_demo() -> AgentRunResult:
@@ -103,18 +103,19 @@ def run_external_share_blocked_demo() -> AgentRunResult:
         status="requested",
         detail="示範嘗試將 mock SOP 摘要交給外部收件者。",
     )
-    decision = validate_tool_call(
+    decisions = validate_tool_call_steps(
         "share_sop_excerpt",
         arguments,
         policy=EXTERNAL_SHARE_DEMO_POLICY,
     )
-    assert not decision.allowed
-    trace.add(
-        kind="guardrail",
-        name=decision.rule,
-        status="blocked",
-        detail=decision.detail,
-    )
+    assert not decisions[-1].allowed
+    for decision in decisions:
+        trace.add(
+            kind="guardrail",
+            name=decision.rule,
+            status="allowed" if decision.allowed else "blocked",
+            detail=decision.detail,
+        )
     trace.add(
         kind="tool",
         name="outbound_dispatch",
@@ -123,6 +124,47 @@ def run_external_share_blocked_demo() -> AgentRunResult:
     )
     return AgentRunResult(
         response="收件者不在 allowlist，已拒絕外寄 mock SOP；沒有發送任何資料。",
+        trace=trace.as_list(),
+        stopped=True,
+    )
+
+
+def run_external_share_schema_blocked_demo() -> AgentRunResult:
+    """Reject extra outbound parameters before a dispatch handler can run."""
+    trace = RunTrace()
+    arguments = {
+        "recipient": "it-support@example.test",
+        "article_id": "SOP-VPN-001",
+        "include_all_articles": "true",
+    }
+    trace.add(
+        kind="tool",
+        name="share_sop_excerpt",
+        status="requested",
+        detail="示範多帶一個 schema 未定義的 include_all_articles 參數。",
+    )
+    decisions = validate_tool_call_steps(
+        "share_sop_excerpt",
+        arguments,
+        policy=EXTERNAL_SHARE_DEMO_POLICY,
+    )
+    assert decisions[-1].rule == "tool_schema"
+    assert not decisions[-1].allowed
+    for decision in decisions:
+        trace.add(
+            kind="guardrail",
+            name=decision.rule,
+            status="allowed" if decision.allowed else "blocked",
+            detail=decision.detail,
+        )
+    trace.add(
+        kind="tool",
+        name="outbound_dispatch",
+        status="skipped",
+        detail="schema 拒絕後沒有執行任何對外發送 handler。",
+    )
+    return AgentRunResult(
+        response="外寄參數不符合 schema，已在 dispatch 前拒絕；沒有發送任何資料。",
         trace=trace.as_list(),
         stopped=True,
     )

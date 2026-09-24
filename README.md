@@ -36,7 +36,7 @@ uvicorn app.web:app --reload
 - 「Context 精簡」不需要 API key，固定示範歷史壓縮、相關性選擇與敏感資料最小化。
 - 「文件授權邊界」不需要 API key，固定示範 tenant、文件 ACL、檢索後複檢與 NeMo regex Retrieval Rail 預覽。
 - 「工具目錄縮減」不需要 API key，固定比較 20 個候選工具與實際只給 Helpdesk Agent 的 2 個必要工具。
-- 「外寄資料被擋」不需要 API key，固定驗證外部收件者會在 dispatch 前被 recipient allowlist 拒絕。
+- 「外寄政策逐層檢查」不需要 API key，固定顯示工具註冊、read/write/execute 邊界、schema、收件者格式與 allowlist 的逐層決定；外部收件者會在 dispatch 前被拒絕。
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
 - 「Token／成本上限」與「時間上限」不需要 API key，固定顯示執行預算用完後，停止下一次 Agent 動作。
 
@@ -51,6 +51,8 @@ uvicorn app.web:app --reload
 若要重現 Day 14 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=document-authorization`。固定情境會先過濾不同 tenant 與角色不符的文件，模擬取回後混入跨 tenant 結果，再由檢索後授權擋下；最後使用 Day 14 NeMo 設定的 regex 進行本機預覽。
 
 若要重現 Day 15 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=tool-catalog`。固定情境會顯示應用程式層有 20 個候選工具，但本次 Helpdesk triage 只把 `search_it_sop` 與 `create_ticket` 的 schema 提供給模型。
+
+若要重現 Day 16 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=external-share`。固定情境會讓 schema 正確的外寄請求依序通過工具註冊、操作類型、schema 與 email 格式檢查，再由收件者 allowlist 擋下，最後留下 `outbound_dispatch skipped`。
 
 Day 14 的頁面是 deterministic preview，不會假裝 NeMo runtime 已執行。若要實際用 NeMo Guardrails 0.23.0 載入同一份設定：
 

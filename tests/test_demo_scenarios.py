@@ -70,6 +70,10 @@ class DemoScenarioTests(unittest.TestCase):
             [(event["name"], event["status"]) for event in result.trace],
             [
                 ("share_sop_excerpt", "requested"),
+                ("tool_allowlist", "allowed"),
+                ("operation_boundary", "allowed"),
+                ("tool_schema", "allowed"),
+                ("recipient_format", "allowed"),
                 ("recipient_allowlist", "blocked"),
                 ("outbound_dispatch", "skipped"),
             ],

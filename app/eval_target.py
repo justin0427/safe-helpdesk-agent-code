@@ -9,6 +9,7 @@ from app.demo_scenarios import run_context_compaction_demo
 from app.demo_scenarios import run_document_authorization_demo
 from app.demo_scenarios import run_tool_catalog_scope_demo
 from app.demo_scenarios import run_external_share_blocked_demo
+from app.demo_scenarios import run_external_share_schema_blocked_demo
 from app.demo_scenarios import run_rag_injection_demo
 from app.demo_scenarios import run_runaway_loop_demo
 from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
@@ -48,6 +49,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_loop_stops_before_extra_tool()
     if case == "external_share_blocked":
         return _run_external_share_blocked()
+    if case == "external_share_schema_blocked":
+        return _run_external_share_schema_blocked()
     if case == "rag_injection_blocked":
         return _run_rag_injection_blocked()
     if case == "context_is_minimized":
@@ -160,6 +163,16 @@ def _run_external_share_blocked() -> dict[str, object]:
     return {
         "answer": result.response,
         "stopped": result.stopped,
+        "trace": result.trace,
+    }
+
+
+def _run_external_share_schema_blocked() -> dict[str, object]:
+    result = run_external_share_schema_blocked_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "dispatch_called": False,
         "trace": result.trace,
     }
 

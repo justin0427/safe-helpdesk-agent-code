@@ -76,12 +76,26 @@ class WebConsoleTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["stopped"])
         self.assertIn("沒有發送任何資料", response.json()["response"])
+        self.assertEqual(
+            [event["name"] for event in response.json()["trace"]],
+            [
+                "share_sop_excerpt",
+                "tool_allowlist",
+                "operation_boundary",
+                "tool_schema",
+                "recipient_format",
+                "recipient_allowlist",
+                "outbound_dispatch",
+            ],
+        )
 
     def test_day_eleven_screenshot_scenario_renders_the_blocked_share(self) -> None:
         response = self.client.get("/?scenario=external-share")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("recipient_allowlist", response.text)
+        self.assertIn("operation_boundary", response.text)
+        self.assertIn("tool_schema", response.text)
         self.assertIn("outbound_dispatch", response.text)
 
     def test_runs_the_rag_injection_demo(self) -> None:
