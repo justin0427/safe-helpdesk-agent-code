@@ -9,6 +9,7 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
 from langchain.tools import ToolRuntime, tool
 from langchain_openai import ChatOpenAI
+from langchain_core.exceptions import ModelError, ModelTimeoutError
 from langgraph.errors import GraphRecursionError
 
 from app.execution_budget import (
@@ -18,6 +19,7 @@ from app.execution_budget import (
     MAX_OUTPUT_TOKENS_PER_CALL,
     MAX_TOOL_CALLS,
     MODEL_TIMEOUT_SECONDS,
+    DEFAULT_RUN_TIME_BUDGET_SECONDS,
     TokenPrice,
 )
 from app.context_boundaries import (
@@ -27,7 +29,7 @@ from app.context_boundaries import (
 )
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
-from app.loop_control import DEFAULT_RECURSION_LIMIT, build_agent_config, loop_limit_message
+from app.loop_control import LIVE_AGENT_RECURSION_LIMIT, build_agent_config, loop_limit_message
 from app.retry_control import CircuitBreaker
 from app.run_trace import AgentRunResult, RunTrace
 from app.tickets import MockTicketStore
@@ -77,20 +79,26 @@ class HelpdeskAgent:
         self,
         *,
         model_name: str,
+        model_api_key: str | None = None,
+        model_base_url: str | None = None,
+        model_timeout_seconds: float = MODEL_TIMEOUT_SECONDS,
         requested_by: str,
         ticket_store: Optional[MockTicketStore] = None,
         knowledge_base: Optional[MockKnowledgeBase] = None,
-        recursion_limit: int = DEFAULT_RECURSION_LIMIT,
+        recursion_limit: int = LIVE_AGENT_RECURSION_LIMIT,
         input_price_per_million_usd: Decimal | None = None,
         output_price_per_million_usd: Decimal | None = None,
         max_cost_usd: Decimal | None = None,
+        max_elapsed_seconds: float = DEFAULT_RUN_TIME_BUDGET_SECONDS,
         sop_circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
         self.model_name = model_name
         model = ChatOpenAI(
             model=model_name,
+            api_key=model_api_key,
+            base_url=model_base_url,
             temperature=0,
-            timeout=MODEL_TIMEOUT_SECONDS,
+            timeout=model_timeout_seconds,
             max_tokens=MAX_OUTPUT_TOKENS_PER_CALL,
         )
         self.requested_by = requested_by
@@ -98,7 +106,10 @@ class HelpdeskAgent:
         self.knowledge_base = knowledge_base or MockKnowledgeBase()
         self.sop_circuit_breaker = sop_circuit_breaker or CircuitBreaker()
         self.agent_config = build_agent_config(recursion_limit)
-        self.budget_limits = BudgetLimits(max_estimated_cost_usd=max_cost_usd)
+        self.budget_limits = BudgetLimits(
+            max_elapsed_seconds=max_elapsed_seconds,
+            max_estimated_cost_usd=max_cost_usd,
+        )
         self.token_price = _token_price(
             input_price_per_million_usd,
             output_price_per_million_usd,
@@ -165,8 +176,40 @@ class HelpdeskAgent:
                 trace=trace.as_list(),
                 stopped=True,
             )
+        except ModelTimeoutError:
+            trace.add(
+                kind="model",
+                name="live_llm",
+                status="timed_out",
+                detail="模型未在單次請求時限內回覆，本次執行已停止。",
+            )
+            return AgentRunResult(
+                response="模型回覆逾時，本次沒有繼續執行後續 Agent 動作，請稍後再試。",
+                trace=trace.as_list(),
+                stopped=True,
+            )
+        except ModelError:
+            trace.add(
+                kind="model",
+                name="live_llm",
+                status="failed",
+                detail="模型服務目前無法完成請求，本次執行已停止。",
+            )
+            return AgentRunResult(
+                response="模型服務目前無法使用，本次沒有繼續執行後續 Agent 動作，請稍後再試。",
+                trace=trace.as_list(),
+                stopped=True,
+            )
 
         response = _message_text(result["messages"][-1].content)
+        if not response.strip():
+            response = "模型沒有產生可顯示的回覆；系統沒有因此執行其他動作。"
+            trace.add(
+                kind="guardrail",
+                name="empty_model_output",
+                status="degraded",
+                detail="空白模型輸出已改為固定降級訊息。",
+            )
         trace.add(
             kind="model",
             name="live_llm",

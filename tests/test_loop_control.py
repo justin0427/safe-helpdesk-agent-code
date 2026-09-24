@@ -1,11 +1,14 @@
 import unittest
 
-from app.loop_control import build_agent_config, loop_limit_message
+from app.loop_control import LIVE_AGENT_RECURSION_LIMIT, build_agent_config, loop_limit_message
 
 
 class LoopControlTests(unittest.TestCase):
     def test_builds_a_recursion_limit_config(self) -> None:
         self.assertEqual(build_agent_config(6), {"recursion_limit": 6})
+
+    def test_live_agent_allows_a_complete_two_tool_loop(self) -> None:
+        self.assertEqual(LIVE_AGENT_RECURSION_LIMIT, 20)
 
     def test_rejects_an_impossibly_small_limit(self) -> None:
         with self.assertRaises(ValueError):

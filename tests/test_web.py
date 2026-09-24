@@ -25,7 +25,11 @@ class WebConsoleTests(unittest.TestCase):
     def test_runtime_status_never_returns_the_api_key(self) -> None:
         with patch.dict(
             "os.environ",
-            {"OPENAI_API_KEY": "secret-value", "MODEL_NAME": "test-model"},
+            {
+                "MODEL_API_KEY": "secret-value",
+                "MODEL_NAME": "test-model",
+                "MODEL_BASE_URL": "http://private-model.example/v1",
+            },
             clear=True,
         ):
             response = self.client.get("/api/runtime")
@@ -33,7 +37,9 @@ class WebConsoleTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["live_llm_ready"])
         self.assertEqual(response.json()["model_name"], "test-model")
+        self.assertEqual(response.json()["provider"], "OpenAI-compatible")
         self.assertNotIn("secret-value", response.text)
+        self.assertNotIn("private-model.example", response.text)
 
     def test_runtime_status_reports_unconfigured_live_mode(self) -> None:
         with patch.dict("os.environ", {}, clear=True):

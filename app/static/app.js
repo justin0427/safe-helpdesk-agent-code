@@ -45,8 +45,8 @@ async function loadRuntimeStatus() {
     isLiveReady = Boolean(runtime.live_llm_ready);
     liveModeStatus.textContent = isLiveReady ? "已連接" : "尚未設定";
     liveModeDetail.textContent = isLiveReady
-      ? `模型：${runtime.model_name}`
-      : "請先設定 OPENAI_API_KEY 與 MODEL_NAME。";
+      ? `模型：${runtime.model_name}（${runtime.provider}）`
+      : "請先設定 MODEL_NAME 與模型憑證。";
   } catch (_error) {
     liveModeStatus.textContent = "狀態無法讀取";
     liveModeDetail.textContent = "deterministic tests 仍可使用。";

@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.agent import HelpdeskAgent
+from app.execution_budget import DEFAULT_RUN_TIME_BUDGET_SECONDS, MODEL_TIMEOUT_SECONDS
 from app.demo_scenarios import (
     run_backend_authorization_demo,
     run_circuit_open_demo,
@@ -33,6 +34,7 @@ from app.demo_scenarios import (
 )
 from app.retry_control import CircuitBreaker
 from app.nemo_input_preview import inspect_input_preview
+from app.model_settings import ModelSettings
 from app.run_trace import AgentRunResult, RunTrace
 
 
@@ -76,10 +78,11 @@ def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
 @app.get("/api/runtime")
 def runtime_status() -> dict[str, str | bool | None]:
     load_dotenv()
-    model_name = os.getenv("MODEL_NAME")
+    settings = ModelSettings.from_env()
     return {
-        "live_llm_ready": bool(os.getenv("OPENAI_API_KEY") and model_name),
-        "model_name": model_name or None,
+        "live_llm_ready": settings.is_ready,
+        "model_name": settings.model_name,
+        "provider": settings.provider_label,
         "deterministic_tests_ready": True,
     }
 
@@ -87,11 +90,11 @@ def runtime_status() -> dict[str, str | bool | None]:
 @app.post("/api/run")
 def run_agent(request: AgentRequest) -> dict:
     load_dotenv()
-    model_name = os.getenv("MODEL_NAME")
-    if not os.getenv("OPENAI_API_KEY") or not model_name:
+    settings = ModelSettings.from_env()
+    if not settings.is_ready:
         raise HTTPException(
             status_code=503,
-            detail="請在 .env 設定 OPENAI_API_KEY 和 MODEL_NAME，或先使用下方本機示範。",
+            detail="請在 .env 設定 MODEL_NAME 與模型憑證，或先使用下方本機示範。",
         )
     input_decision = inspect_input_preview(request.message)
     if not input_decision.allowed:
@@ -115,11 +118,21 @@ def run_agent(request: AgentRequest) -> dict:
         ).as_dict()
     try:
         agent = HelpdeskAgent(
-            model_name=model_name,
+            model_name=settings.model_name,
+            model_api_key=settings.api_key,
+            model_base_url=settings.base_url,
+            model_timeout_seconds=_float_env(
+                "MODEL_TIMEOUT_SECONDS",
+                MODEL_TIMEOUT_SECONDS,
+            ),
             requested_by="demo.user",
             input_price_per_million_usd=_decimal_env("MODEL_INPUT_PER_MILLION_USD"),
             output_price_per_million_usd=_decimal_env("MODEL_OUTPUT_PER_MILLION_USD"),
             max_cost_usd=_decimal_env("RUN_COST_BUDGET_USD"),
+            max_elapsed_seconds=_float_env(
+                "RUN_TIME_BUDGET_SECONDS",
+                DEFAULT_RUN_TIME_BUDGET_SECONDS,
+            ),
             sop_circuit_breaker=SOP_CIRCUIT_BREAKER,
         )
     except ValueError as error:
@@ -220,6 +233,19 @@ def _decimal_env(name: str) -> Decimal | None:
         return Decimal(value)
     except InvalidOperation as error:
         raise ValueError(f"{name} 必須是十進位數字") from error
+
+
+def _float_env(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return default
+    try:
+        parsed = float(value)
+    except ValueError as error:
+        raise ValueError(f"{name} 必須是數字") from error
+    if parsed <= 0:
+        raise ValueError(f"{name} 必須大於 0")
+    return parsed
 
 
 def _scenario_page(result: dict) -> HTMLResponse:

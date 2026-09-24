@@ -20,6 +20,7 @@ MAX_MODEL_CALLS = 3
 MAX_TOOL_CALLS = 4
 MODEL_TIMEOUT_SECONDS = 20
 MAX_OUTPUT_TOKENS_PER_CALL = 600
+DEFAULT_RUN_TIME_BUDGET_SECONDS = 45.0
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,7 @@ class TokenPrice:
 
 @dataclass(frozen=True)
 class BudgetLimits:
-    max_elapsed_seconds: float = 45.0
+    max_elapsed_seconds: float = DEFAULT_RUN_TIME_BUDGET_SECONDS
     max_total_tokens: int = 3_000
     max_estimated_cost_usd: Decimal | None = None
 

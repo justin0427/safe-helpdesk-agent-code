@@ -50,7 +50,7 @@
         <label for="message">訊息</label>
         <textarea id="message" rows="8">VPN 連不上，從今天早上九點開始發生，請先查 SOP；如果仍無法排除，請幫我開一張高優先級工單。</textarea>
         <button id="run-agent" class="primary" type="button" disabled>執行 Live LLM Agent</button>
-        <p class="hint">Live 模式需要在 <code>.env</code> 設定 <code>OPENAI_API_KEY</code> 與 <code>MODEL_NAME</code>。頁面只回報是否完成設定，不會回傳 key。</p>
+        <p class="hint">Live 模式需要在 <code>.env</code> 設定模型名稱與憑證；OpenAI-compatible 服務可再設定 <code>MODEL_BASE_URL</code>。頁面不會回傳 key 或端點位址。</p>
 
         <div class="demo-actions" aria-label="不需 API key 的示範">
           <div>

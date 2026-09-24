@@ -1,6 +1,6 @@
 # Safe Helpdesk Agent Code
 
-這是一個可在本機操作的 LangChain IT Helpdesk Agent。頁面明確分成兩種模式：Live LLM mode 會透過 `ChatOpenAI` 呼叫 `.env` 指定的模型；Deterministic Test mode 使用固定 mock 資料重現安全行為，不呼叫外部模型。
+這是一個可在本機操作的 LangChain IT Helpdesk Agent。頁面明確分成兩種模式：Live LLM mode 會透過 `ChatOpenAI` 呼叫 `.env` 指定的 OpenAI 或 OpenAI-compatible 模型；Deterministic Test mode 使用固定 mock 資料重現安全行為，不呼叫外部模型。
 
 兩種模式都只會查詢本機 mock SOP、建立記憶體中的 mock 工單，並把模型、工具、retrieval boundary 與 guardrail 軌跡攤開顯示。唯讀 SOP 查詢有退避重試與降級回覆；重複的寫入請求會用 idempotency key 去重。
 
@@ -9,7 +9,7 @@
 ## Requirements
 
 - Python 3.11+
-- An OpenAI API key（只在 Live LLM mode 需要）
+- OpenAI 或 OpenAI-compatible chat model（只在 Live LLM mode 需要）
 
 ## 啟動本機頁面
 
@@ -20,7 +20,18 @@ uv pip install -e .
 cp .env.example .env
 ```
 
-在 `.env` 設定 `OPENAI_API_KEY` 與 `MODEL_NAME` 後，啟動：
+使用 OpenAI 時，在 `.env` 設定 `MODEL_NAME` 與 `MODEL_API_KEY`。使用 Ollama 等 OpenAI-compatible 服務時，再加上 `/v1` base URL：
+
+```dotenv
+MODEL_NAME=your-model-name
+MODEL_API_KEY=ollama
+MODEL_BASE_URL=http://localhost:11434/v1
+# Slow local models may need values larger than the 20/45 second defaults.
+MODEL_TIMEOUT_SECONDS=120
+RUN_TIME_BUDGET_SECONDS=360
+```
+
+`MODEL_API_KEY` 對 Ollama 只是 OpenAI client 要求的非空值，伺服器會忽略它。也可沿用 `OPENAI_API_KEY` 與 `OPENAI_BASE_URL`。請勿把內網 IP 或真實 key 提交到 Git。完成設定後啟動：
 
 ```bash
 uvicorn app.web:app --reload
@@ -46,7 +57,7 @@ uvicorn app.web:app --reload
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
 - 「Token／成本上限」與「時間上限」不需要 API key，固定顯示執行預算用完後，停止下一次 Agent 動作。
 
-各示範的目的不同。SOP 優先流程對應 Day 2；「先開單會被擋」對應 Day 3 的後端阻擋規則；SOP 逾時示範驗證 Day 4 的重試預算與降級回覆；服務熔斷對應 Day 8，讓相依服務已知失敗時後續請求直接降級；信任邊界對應 Day 10，讓文件內容不能自行授權寫入；惡意 SOP 示範對應 Day 11，讓指令式 retrieval 內容在進入模型 context 前被隔離；Context 精簡對應 Day 12，讓歷史資料先經過敏感資料移除、相關性選擇與壓縮。外寄資料示範保留給後續 Tool Design 章節。迴圈示範留給 Day 6；兩個預算示範對應 Day 7。實際 LangChain Agent 同時設定 LangGraph `recursion_limit`、LangChain model/tool call 上限、每次模型呼叫 timeout，以及單次輸出 token 上限。
+各示範的目的不同。SOP 優先流程對應 Day 2；「先開單會被擋」對應 Day 3 的後端阻擋規則；SOP 逾時示範驗證 Day 4 的重試預算與降級回覆；服務熔斷對應 Day 8，讓相依服務已知失敗時後續請求直接降級；信任邊界對應 Day 10，讓文件內容不能自行授權寫入；惡意 SOP 示範對應 Day 11，讓指令式 retrieval 內容在進入模型 context 前被隔離；Context 精簡對應 Day 12，讓歷史資料先經過敏感資料移除、相關性選擇與壓縮。外寄資料示範保留給後續 Tool Design 章節。迴圈示範留給 Day 6；兩個預算示範對應 Day 7。deterministic loop demo 保留 6 個示範 step；Live Agent 因含 middleware 節點，graph 上限為 20 個 super-step。兩者都另設 LangChain model/tool call 上限、每次模型呼叫 timeout，以及單次輸出 token 上限，不能把 super-step 數直接當成模型或工具呼叫次數。
 
 若要重現 Day 3 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=ticket-before-sop`。這個固定畫面和按鈕使用同一個後端情境，會顯示 `create_ticket` 請求、`sop_first` 阻擋與沒有建立 mock 工單的結果。
 
@@ -89,6 +100,12 @@ python -m app.main
 
 ```bash
 python -m unittest discover -s tests -v
+```
+
+Live LLM smoke test 會真的送出三組 mock Helpdesk 訊息，驗證正常雙工具流程、沒有寫入授權，以及惡意 retrieval 被隔離。它不會連正式 ITSM，但會呼叫 `.env` 指定的模型端點：
+
+```bash
+python scripts/live_llm_smoke.py
 ```
 
 ## Promptfoo security suite
