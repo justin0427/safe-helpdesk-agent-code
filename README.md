@@ -38,6 +38,7 @@ uvicorn app.web:app --reload
 - 「工具目錄縮減」不需要 API key，固定比較 20 個候選工具與實際只給 Helpdesk Agent 的 2 個必要工具。
 - 「外寄政策逐層檢查」不需要 API key，固定顯示工具註冊、read/write/execute 邊界、schema、收件者格式與 allowlist 的逐層決定；外部收件者會在 dispatch 前被拒絕。
 - 「工具輸出清理」不需要 API key，固定讓 mock 工具回傳含指令與除錯秘密的錯誤，再確認模型只會看到公開錯誤代碼。
+- 「NeMo Input Rails」不需要 API key，讀取 Day 18 的 NeMo regex Input Rail 設定，固定顯示 jailbreak、PII 與超出 Helpdesk policy 的輸入在模型呼叫前被拒絕。
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
 - 「Token／成本上限」與「時間上限」不需要 API key，固定顯示執行預算用完後，停止下一次 Agent 動作。
 
@@ -56,6 +57,8 @@ uvicorn app.web:app --reload
 若要重現 Day 16 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=external-share`。固定情境會讓 schema 正確的外寄請求依序通過工具註冊、操作類型、schema 與 email 格式檢查，再由收件者 allowlist 擋下，最後留下 `outbound_dispatch skipped`。
 
 若要重現 Day 17 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=tool-output`。固定情境會讓 mock SOP 工具回傳含有未定義欄位、指令式文字與除錯秘密的錯誤物件；頁面只顯示清理規則與固定公開錯誤，不會顯示原始內容。
+
+若要重現 Day 18 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=nemo-input-rails`。頁面會讀取 `guardrails/day18/config.yml` 的同一組 regex patterns，做不需 API key 的 deterministic preview。這個 preview 不會冒充完整的 NeMo runtime；要實際載入並執行同一份 Input Rail，先安裝 `.[guardrails]`，再執行 `python -m app.validate_nemo_input_config`。
 
 Day 14 的頁面是 deterministic preview，不會假裝 NeMo runtime 已執行。若要實際用 NeMo Guardrails 0.23.0 載入同一份設定：
 

@@ -1,0 +1,12 @@
+rails:
+  config:
+    regex_detection:
+      input:
+        patterns:
+          - '(?P<jailbreak>ignore.{0,32}(previous|prior|all).{0,20}(instructions?|rules?)|忽略.{0,16}(前面|先前|所有).{0,16}(指令|規則))'
+          - '(?P<pii>[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|09\d{2}[- ]?\d{3}[- ]?\d{3})'
+          - '(?P<policy>(reset|重設|解鎖|停用).{0,20}(password|account|密碼|帳號)|顯示.{0,16}(system prompt|系統提示))'
+        case_insensitive: true
+  input:
+    flows:
+      - regex check input

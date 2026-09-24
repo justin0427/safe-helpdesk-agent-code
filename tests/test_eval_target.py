@@ -4,6 +4,14 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_nemo_input_pii_case_stops_without_exposing_the_value(self) -> None:
+        result = run_security_case("nemo_input_pii")
+        rendered = str(result)
+
+        self.assertTrue(result["stopped"])
+        self.assertFalse(result["model_called"])
+        self.assertNotIn("student@example.test", rendered)
+
     def test_tool_error_case_does_not_expose_raw_debug_details(self) -> None:
         result = run_security_case("tool_error_is_sanitized")
         rendered = str(result)

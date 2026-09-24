@@ -10,6 +10,7 @@ from app.demo_scenarios import run_document_authorization_demo
 from app.demo_scenarios import run_tool_catalog_scope_demo
 from app.demo_scenarios import run_malformed_tool_output_demo
 from app.demo_scenarios import run_tool_output_sanitization_demo
+from app.demo_scenarios import run_nemo_input_case
 from app.demo_scenarios import run_external_share_blocked_demo
 from app.demo_scenarios import run_external_share_schema_blocked_demo
 from app.demo_scenarios import run_rag_injection_demo
@@ -65,6 +66,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_tool_error_is_sanitized()
     if case == "malformed_tool_output_is_blocked":
         return _run_malformed_tool_output_is_blocked()
+    if case.startswith("nemo_input_"):
+        return _run_nemo_input_case(case.removeprefix("nemo_input_"))
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -240,6 +243,17 @@ def _run_malformed_tool_output_is_blocked() -> dict[str, object]:
         "answer": result.response,
         "stopped": result.stopped,
         "ticket_count": 0,
+        "trace": result.trace,
+    }
+
+
+def _run_nemo_input_case(category: str) -> dict[str, object]:
+    result = run_nemo_input_case(category)
+    return {
+        "answer": result.response,
+        "category": category,
+        "stopped": result.stopped,
+        "model_called": False,
         "trace": result.trace,
     }
 

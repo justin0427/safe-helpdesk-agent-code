@@ -153,6 +153,23 @@ class WebConsoleTests(unittest.TestCase):
         self.assertIn("model_visible_tool_result", response.text)
         self.assertNotIn("MOCK_DB_PASSWORD", response.text)
 
+    def test_runs_the_nemo_input_rails_demo(self) -> None:
+        response = self.client.post("/api/demos/nemo-input-rails")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertEqual(response.json()["trace"][-1]["status"], "skipped")
+
+    def test_day_eighteen_screenshot_scenario_renders_input_rails(self) -> None:
+        response = self.client.get("/?scenario=nemo-input-rails")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("nemo_input_jailbreak", response.text)
+        self.assertIn("nemo_input_pii", response.text)
+        self.assertIn("nemo_input_policy", response.text)
+        self.assertIn("model_call", response.text)
+        self.assertNotIn("student@example.test", response.text)
+
     def test_day_fifteen_screenshot_scenario_renders_tool_reduction(self) -> None:
         response = self.client.get("/?scenario=tool-catalog")
 

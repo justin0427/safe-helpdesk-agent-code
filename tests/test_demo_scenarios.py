@@ -11,6 +11,7 @@ from app.demo_scenarios import (
     run_ticket_before_sop_demo,
     run_time_budget_demo,
     run_tool_output_sanitization_demo,
+    run_nemo_input_rails_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
     run_sop_first_demo,
@@ -18,6 +19,18 @@ from app.demo_scenarios import (
 
 
 class DemoScenarioTests(unittest.TestCase):
+    def test_nemo_input_demo_blocks_three_categories_before_model(self) -> None:
+        result = run_nemo_input_rails_demo()
+        rendered = str(result.as_dict())
+
+        self.assertTrue(result.stopped)
+        self.assertIn("nemo_input_jailbreak", rendered)
+        self.assertIn("nemo_input_pii", rendered)
+        self.assertIn("nemo_input_policy", rendered)
+        self.assertEqual(result.trace[-1]["name"], "model_call")
+        self.assertEqual(result.trace[-1]["status"], "skipped")
+        self.assertNotIn("student@example.test", rendered)
+
     def test_tool_error_is_sanitized_before_model_context(self) -> None:
         result = run_tool_output_sanitization_demo()
         rendered = str(result.as_dict())
