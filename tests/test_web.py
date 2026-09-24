@@ -91,6 +91,22 @@ class WebConsoleTests(unittest.TestCase):
         self.assertTrue(response.json()["stopped"])
         self.assertIn("指令式內容已隔離", response.json()["response"])
 
+    def test_runs_the_context_compaction_demo(self) -> None:
+        response = self.client.post("/api/demos/context-compaction")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("3 個 context blocks", response.json()["response"])
+
+    def test_day_twelve_screenshot_scenario_renders_context_decisions(self) -> None:
+        response = self.client.get("/?scenario=context-compaction")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("sensitive_data_minimization", response.text)
+        self.assertIn("relevance_selection", response.text)
+        self.assertIn("history_compaction", response.text)
+        self.assertNotIn("MOCK-948201", response.text)
+
     def test_day_eleven_rag_screenshot_scenario_renders_quarantine(self) -> None:
         response = self.client.get("/?scenario=rag-injection")
 

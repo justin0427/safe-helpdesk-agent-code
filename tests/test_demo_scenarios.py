@@ -2,6 +2,7 @@ import unittest
 
 from app.demo_scenarios import (
     run_circuit_open_demo,
+    run_context_compaction_demo,
     run_context_boundary_demo,
     run_external_share_blocked_demo,
     run_rag_injection_demo,
@@ -15,6 +16,15 @@ from app.demo_scenarios import (
 
 
 class DemoScenarioTests(unittest.TestCase):
+    def test_context_compaction_keeps_relevant_history_and_drops_the_secret(self) -> None:
+        result = run_context_compaction_demo()
+        rendered = str(result.as_dict())
+
+        self.assertTrue(result.stopped)
+        self.assertIn("3 個 context blocks", result.response)
+        self.assertNotIn("MOCK-948201", rendered)
+        self.assertEqual(result.trace[-1]["status"], "3_blocks")
+
     def test_sop_first_demo_searches_before_creating_a_ticket(self) -> None:
         result = run_sop_first_demo()
 

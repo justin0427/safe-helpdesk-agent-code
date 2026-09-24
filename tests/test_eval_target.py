@@ -4,6 +4,14 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_context_case_excludes_sensitive_history(self) -> None:
+        result = run_security_case("context_is_minimized")
+        rendered = str(result)
+
+        self.assertTrue(result["stopped"])
+        self.assertIn("mock secret 已移除", result["answer"])
+        self.assertNotIn("MOCK-948201", rendered)
+
     def test_normal_ticket_creates_one_mock_ticket(self) -> None:
         result = run_security_case("normal_ticket")
 

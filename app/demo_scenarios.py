@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 
+from app.context_compaction import HistoryItem, prepare_history_context
 from app.context_boundaries import context_inventory
 from app.execution_budget import BudgetLedger, BudgetLimits, TokenPrice
 from app.helpdesk_workflow import HelpdeskWorkflow
@@ -446,6 +447,109 @@ def run_rag_injection_demo() -> AgentRunResult:
             f"檢索到 {len(retrieved)} 份 mock 文件；"
             f"{len(allowed_documents)} 份保留為參考資料，1 份指令式內容已隔離。"
             "沒有建立 mock 工單。"
+        ),
+        trace=trace.as_list(),
+        stopped=True,
+    )
+
+
+def run_context_compaction_demo() -> AgentRunResult:
+    """Select a small, safe context without treating recency as relevance."""
+    trace = RunTrace()
+    history = (
+        HistoryItem(
+            "message-01",
+            1,
+            "測試用 Windows 11 筆電。",
+            "裝置是測試用 Windows 11 筆電。",
+        ),
+        HistoryItem(
+            "message-02",
+            2,
+            "Wi-Fi 問題已處理完成。",
+        ),
+        HistoryItem("message-03", 3, "VPN 曾出現 E401，重新登入後暫時恢復。"),
+        HistoryItem(
+            "message-04",
+            4,
+            "測試帳號備用碼是 MOCK-948201。",
+            sensitivity="secret",
+        ),
+        HistoryItem(
+            "message-05",
+            5,
+            "印表機沒有紙，已自行補充。",
+        ),
+        HistoryItem(
+            "message-06",
+            6,
+            "現在 VPN 又出現 E401，只要排障步驟，不要開工單。",
+        ),
+    )
+    prepared = prepare_history_context(
+        history,
+        query_terms=("VPN", "E401"),
+        max_blocks=3,
+    )
+
+    trace.add(
+        kind="context",
+        name="history_input",
+        status=f"{prepared.input_count}_messages",
+        detail=f"收到 {prepared.input_count} 則 mock 歷史訊息，尚未送入模型。",
+    )
+    trace.add(
+        kind="guardrail",
+        name="sensitive_data_minimization",
+        status="dropped",
+        detail=(
+            f"{len(prepared.dropped_sensitive_ids)} 則標為 secret 的訊息"
+            "未進入排序、摘要或模型 context。"
+        ),
+    )
+    trace.add(
+        kind="context",
+        name="relevance_selection",
+        status="kept",
+        detail="message-03 雖然較舊，但與 VPN、E401 相關，因此保留原文。",
+    )
+    trace.add(
+        kind="context",
+        name="history_compaction",
+        status="summarized",
+        detail=f"{len(prepared.summarized_ids)} 則穩定資料壓成一個摘要 block。",
+    )
+    trace.add(
+        kind="context",
+        name="irrelevant_history",
+        status="dropped",
+        detail=(
+            f"{len(prepared.dropped_irrelevant_ids)} 則已結束且與本次 VPN 問題"
+            "無關的訊息未送入模型。"
+        ),
+    )
+    trace.add(
+        kind="context",
+        name="recency_selection",
+        status="kept",
+        detail="message-06 是最新使用者要求，保留原文。",
+    )
+    trace.add(
+        kind="context",
+        name="model_context",
+        status=f"{len(prepared.model_context)}_blocks",
+        detail=(
+            f"{prepared.input_count} 則歷史整理成 {len(prepared.model_context)} 個 "
+            "model-visible blocks；敏感資料不在其中。"
+        ),
+    )
+    return AgentRunResult(
+        response=(
+            f"{prepared.input_count} 則 mock 歷史已整理成 "
+            f"{len(prepared.model_context)} 個 context blocks："
+            "保留最新要求與較舊的 VPN E401 紀錄，穩定裝置資訊壓成摘要，"
+            f"{len(prepared.dropped_irrelevant_ids)} 則無關訊息省略；"
+            f"{len(prepared.dropped_sensitive_ids)} 則 mock secret 已移除。"
         ),
         trace=trace.as_list(),
         stopped=True,
