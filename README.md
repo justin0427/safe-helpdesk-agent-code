@@ -37,9 +37,9 @@ RUN_TIME_BUDGET_SECONDS=360
 uvicorn app.web:app --reload
 ```
 
-開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。左側會直接顯示 Live LLM 是否完成設定，API 不會回傳 key。Day 11～22 的主流程改成「選擇文章實驗、修改 Prompt、呼叫真實模型、由後端政策決定是否執行」。每次 Live trace 都會留下 `live_llm requested/completed`；Day 18 若被 Input Rail 擋下，則留下 `live_llm skipped`。
+開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。左側會直接顯示 Live LLM 是否完成設定，API 不會回傳 key。Day 11～24 的主流程是「選擇文章實驗、修改 Prompt、呼叫真實模型、由後端政策決定是否執行」。每次 Live trace 都會留下模型呼叫事件；Day 18 若被 Input Rail 擋下，則留下 `live_llm skipped`。
 
-固定情境仍保留在「開啟固定資料測試」內，供 Promptfoo、回歸測試與故障重現使用，不再當成 Day 11～22 的主要模型實驗：
+固定情境仍保留在「開啟固定資料測試」內，供 Promptfoo、回歸測試與故障重現使用，不再當成 Day 11～24 的主要模型實驗：
 
 - 輸入問題，執行真正的 LangChain Agent。Trace 中的 `live_llm requested/completed` 是主要模型呼叫的邊界。
 - 「查看 SOP 優先流程」不需要 API key，固定顯示先查 SOP、再建 mock 工單的軌跡。
@@ -92,7 +92,7 @@ python -m app.validate_nemo_config
 
 Live LLM mode 與 deterministic tests 的角色不同。Live mode 用來觀察真實模型如何選工具與完成 Agent loop；固定情境與 Promptfoo 用來重跑安全條件。沒有設定 API key 時，專案不會把 mock 輸出冒充成模型結果。
 
-Live security experiments 使用同一個輸入框，但每一天提供不同的 model-visible context 或工具 schema。例如 Day 16 讓模型真的提出外寄工具參數，再由 recipient allowlist 擋下；Day 19 讓模型真的提出 `close_ticket`，後端仍以 resource ACL 做最後判斷；Day 20～22 則由模型提出 memory candidates，資料政策不交給模型決定。
+Live security experiments 使用同一個輸入框，但每一天提供不同的 model-visible context 或工具 schema。例如 Day 16 讓模型真的提出外寄工具參數，再由 recipient allowlist 擋下；Day 19 讓模型真的提出 `close_ticket`，後端仍以 resource ACL 做最後判斷；Day 20～22 由模型提出 memory candidates；Day 23、24 則實際執行 multi-agent fan-out 與 handoff 權限縮減。資料與授權政策都不交給模型決定。
 
 若要啟用美元成本上限，還要依實際部署模型填入 `MODEL_INPUT_PER_MILLION_USD`、`MODEL_OUTPUT_PER_MILLION_USD` 與 `RUN_COST_BUDGET_USD`。價格留空時，Agent 仍有時間與 Token 上限，但不會猜測模型價格。
 

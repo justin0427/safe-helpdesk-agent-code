@@ -19,11 +19,11 @@ class WebConsoleTests(unittest.TestCase):
         self.assertIn("experiment-day", response.text)
         self.assertIn("Live security experiment", response.text)
 
-    def test_lists_prompt_driven_experiments_for_days_eleven_through_twenty_two(self) -> None:
+    def test_lists_prompt_driven_experiments_for_days_eleven_through_twenty_four(self) -> None:
         response = self.client.get("/api/experiments")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual([item["day"] for item in response.json()], list(range(11, 23)))
+        self.assertEqual([item["day"] for item in response.json()], list(range(11, 25)))
 
     def test_live_experiment_requires_model_configuration(self) -> None:
         with patch("app.web.load_dotenv"), patch.dict("os.environ", {}, clear=True):

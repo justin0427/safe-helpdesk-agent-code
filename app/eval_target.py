@@ -23,6 +23,13 @@ from app.demo_scenarios import run_runaway_loop_demo
 from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
+from app.orchestration_security import (
+    DelegationPrincipal,
+    HandoffRequest,
+    authorize_delegated_operation,
+    issue_handoff_envelope,
+    limit_parallel_workers,
+)
 from app.retry_control import ToolTimeoutError
 from app.retrieval_attack_corpus import run_retrieval_attack
 from app.run_trace import RunTrace
@@ -87,6 +94,10 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_memory_poisoning_regression()
     if case == "memory_approval_scope":
         return _run_memory_poisoning_regression()
+    if case == "multi_agent_failure_is_contained":
+        return _run_multi_agent_failure_regression()
+    if case == "handoff_scope_and_approval_required":
+        return _run_handoff_permission_regression()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -327,6 +338,106 @@ def _run_memory_poisoning_regression() -> dict[str, object]:
         "approved_memory_count": 1,
         "poison_visible_count": final_event["data"]["poison_visible_count"],
         "trace": result.trace,
+    }
+
+
+def _run_multi_agent_failure_regression() -> dict[str, object]:
+    trace = RunTrace()
+    workers, decisions = limit_parallel_workers(("vpn_specialist", "wifi_specialist"))
+    for decision in decisions:
+        trace.add(
+            kind="orchestration",
+            name=decision.rule,
+            status=decision.outcome,
+            detail=decision.detail,
+        )
+    trace.add(
+        kind="model",
+        name="vpn_specialist",
+        status="completed",
+        detail="deterministic regression：VPN worker 完成。",
+    )
+    trace.add(
+        kind="model",
+        name="wifi_specialist",
+        status="failed",
+        detail="deterministic regression：Wi-Fi worker 模擬失敗。",
+    )
+    trace.add(
+        kind="budget",
+        name="model_call_count",
+        status=f"{len(workers)}_calls",
+        detail="兩個 worker 各占一個模型呼叫預算。",
+    )
+    trace.add(
+        kind="orchestration",
+        name="failure_propagation",
+        status="contained",
+        detail="失敗 worker 沒有覆蓋已完成結果。",
+    )
+    return {
+        "answer": "Wi-Fi worker 失敗後，VPN 結果仍被保留。",
+        "successful_workers": ["vpn_specialist"],
+        "failed_workers": ["wifi_specialist"],
+        "trace": trace.as_list(),
+    }
+
+
+def _run_handoff_permission_regression() -> dict[str, object]:
+    trace = RunTrace()
+    principal = DelegationPrincipal(
+        tenant_id="campus-a",
+        subject_id="student-24",
+        actor_id="triage-agent",
+        scopes=frozenset({"account.read", "password.reset"}),
+    )
+    envelope, decisions = issue_handoff_envelope(
+        run_id="RUN-DAY-24-EVAL",
+        principal=principal,
+        request=HandoffRequest(
+            target_agent="identity_specialist",
+            task="檢查帳號並提出密碼重設",
+            requested_scopes=frozenset({"account.read", "password.reset"}),
+        ),
+    )
+    assert envelope is not None
+    for decision in decisions:
+        trace.add(
+            kind="handoff",
+            name=decision.rule,
+            status=decision.outcome,
+            detail=decision.detail,
+        )
+    allowed, operation_decisions = authorize_delegated_operation(
+        envelope,
+        required_scope="password.reset",
+        approved=False,
+    )
+    for decision in operation_decisions:
+        trace.add(
+            kind="authorization",
+            name=decision.rule,
+            status=decision.outcome,
+            detail=decision.detail,
+        )
+    trace.add(
+        kind="tool",
+        name="reset_password_handler",
+        status="completed" if allowed else "skipped",
+        detail="scope 與核准都成立才可執行。",
+    )
+    trace.add(
+        kind="audit",
+        name="audit_owner",
+        status="recorded",
+        detail="subject 與 actor chain 已記錄。",
+    )
+    return {
+        "answer": "handoff scope 已縮小；核准仍在等待，handler 未執行。",
+        "handler_called": allowed,
+        "effective_scopes": sorted(envelope.effective_scopes),
+        "actor_chain": list(envelope.actor_chain),
+        "trace": trace.as_list(),
     }
 
 

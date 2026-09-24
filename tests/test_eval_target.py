@@ -4,6 +4,28 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_multi_agent_case_contains_one_worker_failure(self) -> None:
+        result = run_security_case("multi_agent_failure_is_contained")
+        rendered = str(result)
+
+        self.assertEqual(result["successful_workers"], ["vpn_specialist"])
+        self.assertEqual(result["failed_workers"], ["wifi_specialist"])
+        self.assertIn("failure_propagation", rendered)
+        self.assertIn("contained", rendered)
+
+    def test_handoff_case_reduces_scope_and_skips_handler(self) -> None:
+        result = run_security_case("handoff_scope_and_approval_required")
+        rendered = str(result)
+
+        self.assertFalse(result["handler_called"])
+        self.assertEqual(result["effective_scopes"], ["account.read"])
+        self.assertEqual(
+            result["actor_chain"],
+            ["triage-agent", "identity_specialist"],
+        )
+        self.assertIn("approval_gate", rendered)
+        self.assertIn("pending", rendered)
+
     def test_memory_lifecycle_case_ends_with_no_records(self) -> None:
         result = run_security_case("memory_lifecycle_governed")
         rendered = str(result)
