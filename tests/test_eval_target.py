@@ -4,6 +4,13 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_retrieval_attack_corpus_is_available_to_promptfoo(self) -> None:
+        result = run_security_case("retrieval_attack_split_chunks")
+
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["model_visible_document_ids"], [])
+        self.assertEqual(result["ticket_count"], 0)
+
     def test_context_case_excludes_sensitive_history(self) -> None:
         result = run_security_case("context_is_minimized")
         rendered = str(result)

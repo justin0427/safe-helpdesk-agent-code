@@ -20,6 +20,8 @@ prompts:
   - "{{message}}"
 
 tests:
+  - file://retrieval-attacks.yaml
+
   - description: 正常開單必須建立一張 mock 工單
     vars:
       case: normal_ticket

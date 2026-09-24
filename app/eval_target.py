@@ -13,6 +13,7 @@ from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
 from app.retry_control import ToolTimeoutError
+from app.retrieval_attack_corpus import run_retrieval_attack
 from app.run_trace import RunTrace
 from app.tickets import MockTicketStore
 
@@ -28,6 +29,8 @@ class TimedOutSopSource:
 
 
 def run_security_case(case: str) -> dict[str, object]:
+    if case.startswith("retrieval_attack_"):
+        return run_retrieval_attack(case)
     if case == "normal_ticket":
         return _run_normal_ticket()
     if case == "privileged_request":
