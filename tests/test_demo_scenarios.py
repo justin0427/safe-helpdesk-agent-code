@@ -4,6 +4,7 @@ from app.demo_scenarios import (
     run_circuit_open_demo,
     run_context_boundary_demo,
     run_external_share_blocked_demo,
+    run_rag_injection_demo,
     run_sop_timeout_fallback_demo,
     run_ticket_before_sop_demo,
     run_time_budget_demo,
@@ -49,6 +50,21 @@ class DemoScenarioTests(unittest.TestCase):
                 ("recipient_allowlist", "blocked"),
                 ("outbound_dispatch", "skipped"),
             ],
+        )
+
+    def test_rag_injection_demo_quarantines_the_poisoned_document(self) -> None:
+        result = run_rag_injection_demo()
+
+        self.assertTrue(result.stopped)
+        self.assertIsNone(result.ticket)
+        self.assertIn("1 份指令式內容已隔離", result.response)
+        self.assertIn(
+            ("indirect_prompt_injection", "quarantined"),
+            [(event["name"], event["status"]) for event in result.trace],
+        )
+        self.assertIn(
+            ("explicit_user_ticket_request", "blocked"),
+            [(event["name"], event["status"]) for event in result.trace],
         )
 
     def test_runaway_loop_demo_stops_after_the_budget(self) -> None:

@@ -6,6 +6,7 @@ from langchain.messages import AIMessage
 
 from app.demo_scenarios import run_circuit_open_demo
 from app.demo_scenarios import run_external_share_blocked_demo
+from app.demo_scenarios import run_rag_injection_demo
 from app.demo_scenarios import run_runaway_loop_demo
 from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
 from app.helpdesk_workflow import HelpdeskWorkflow
@@ -40,6 +41,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_loop_stops_before_extra_tool()
     if case == "external_share_blocked":
         return _run_external_share_blocked()
+    if case == "rag_injection_blocked":
+        return _run_rag_injection_blocked()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -144,6 +147,16 @@ def _run_external_share_blocked() -> dict[str, object]:
     return {
         "answer": result.response,
         "stopped": result.stopped,
+        "trace": result.trace,
+    }
+
+
+def _run_rag_injection_blocked() -> dict[str, object]:
+    result = run_rag_injection_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "ticket_count": 0,
         "trace": result.trace,
     }
 

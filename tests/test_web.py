@@ -84,6 +84,21 @@ class WebConsoleTests(unittest.TestCase):
         self.assertIn("recipient_allowlist", response.text)
         self.assertIn("outbound_dispatch", response.text)
 
+    def test_runs_the_rag_injection_demo(self) -> None:
+        response = self.client.post("/api/demos/rag-injection")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("指令式內容已隔離", response.json()["response"])
+
+    def test_day_eleven_rag_screenshot_scenario_renders_quarantine(self) -> None:
+        response = self.client.get("/?scenario=rag-injection")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("indirect_prompt_injection", response.text)
+        self.assertIn("explicit_user_ticket_request", response.text)
+        self.assertIn("create_ticket", response.text)
+
     def test_runs_the_token_cost_budget_demo(self) -> None:
         response = self.client.post("/api/demos/token-cost-budget")
 

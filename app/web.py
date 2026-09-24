@@ -16,6 +16,7 @@ from app.demo_scenarios import (
     run_circuit_open_demo,
     run_context_boundary_demo,
     run_external_share_blocked_demo,
+    run_rag_injection_demo,
     run_ticket_before_sop_demo,
     run_sop_timeout_fallback_demo,
     run_time_budget_demo,
@@ -44,6 +45,8 @@ def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
         return _scenario_page(run_ticket_before_sop_demo().as_dict())
     if scenario == "external-share":
         return _scenario_page(run_external_share_blocked_demo().as_dict())
+    if scenario == "rag-injection":
+        return _scenario_page(run_rag_injection_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -103,6 +106,11 @@ def context_boundary_demo() -> dict:
 @app.post("/api/demos/external-share")
 def external_share_demo() -> dict:
     return run_external_share_blocked_demo().as_dict()
+
+
+@app.post("/api/demos/rag-injection")
+def rag_injection_demo() -> dict:
+    return run_rag_injection_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")
