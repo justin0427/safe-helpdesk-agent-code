@@ -42,7 +42,7 @@ class WebConsoleTests(unittest.TestCase):
         self.assertNotIn("private-model.example", response.text)
 
     def test_runtime_status_reports_unconfigured_live_mode(self) -> None:
-        with patch.dict("os.environ", {}, clear=True):
+        with patch("app.web.load_dotenv"), patch.dict("os.environ", {}, clear=True):
             response = self.client.get("/api/runtime")
 
         self.assertEqual(response.status_code, 200)
