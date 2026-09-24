@@ -7,6 +7,7 @@ const circuitButton = document.querySelector("#run-circuit-demo");
 const contextButton = document.querySelector("#run-context-demo");
 const ragInjectionButton = document.querySelector("#run-rag-injection-demo");
 const contextCompactionButton = document.querySelector("#run-context-compaction-demo");
+const documentAuthorizationButton = document.querySelector("#run-document-authorization-demo");
 const externalShareButton = document.querySelector("#run-external-share-demo");
 const loopButton = document.querySelector("#run-loop-demo");
 const tokenCostButton = document.querySelector("#run-token-cost-demo");
@@ -23,7 +24,7 @@ function setStatus(text, state = "") {
 }
 
 function setBusy(isBusy) {
-  [runButton, sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, externalShareButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
+  [runButton, sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, externalShareButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
     button.disabled = isBusy;
   });
 }
@@ -95,6 +96,7 @@ circuitButton.addEventListener("click", () => request("/api/demos/circuit-open")
 contextButton.addEventListener("click", () => request("/api/demos/context-boundary"));
 ragInjectionButton.addEventListener("click", () => request("/api/demos/rag-injection"));
 contextCompactionButton.addEventListener("click", () => request("/api/demos/context-compaction"));
+documentAuthorizationButton.addEventListener("click", () => request("/api/demos/document-authorization"));
 externalShareButton.addEventListener("click", () => request("/api/demos/external-share"));
 loopButton.addEventListener("click", () => request("/api/demos/runaway-loop"));
 tokenCostButton.addEventListener("click", () => request("/api/demos/token-cost-budget"));

@@ -6,6 +6,7 @@ from langchain.messages import AIMessage
 
 from app.demo_scenarios import run_circuit_open_demo
 from app.demo_scenarios import run_context_compaction_demo
+from app.demo_scenarios import run_document_authorization_demo
 from app.demo_scenarios import run_external_share_blocked_demo
 from app.demo_scenarios import run_rag_injection_demo
 from app.demo_scenarios import run_runaway_loop_demo
@@ -49,6 +50,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_rag_injection_blocked()
     if case == "context_is_minimized":
         return _run_context_is_minimized()
+    if case == "document_authorization_isolated":
+        return _run_document_authorization_isolated()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -169,6 +172,15 @@ def _run_rag_injection_blocked() -> dict[str, object]:
 
 def _run_context_is_minimized() -> dict[str, object]:
     result = run_context_compaction_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "trace": result.trace,
+    }
+
+
+def _run_document_authorization_isolated() -> dict[str, object]:
+    result = run_document_authorization_demo()
     return {
         "answer": result.response,
         "stopped": result.stopped,

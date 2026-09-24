@@ -16,6 +16,7 @@ from app.demo_scenarios import (
     run_circuit_open_demo,
     run_context_compaction_demo,
     run_context_boundary_demo,
+    run_document_authorization_demo,
     run_external_share_blocked_demo,
     run_rag_injection_demo,
     run_ticket_before_sop_demo,
@@ -50,6 +51,8 @@ def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
         return _scenario_page(run_rag_injection_demo().as_dict())
     if scenario == "context-compaction":
         return _scenario_page(run_context_compaction_demo().as_dict())
+    if scenario == "document-authorization":
+        return _scenario_page(run_document_authorization_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -119,6 +122,11 @@ def rag_injection_demo() -> dict:
 @app.post("/api/demos/context-compaction")
 def context_compaction_demo() -> dict:
     return run_context_compaction_demo().as_dict()
+
+
+@app.post("/api/demos/document-authorization")
+def document_authorization_demo() -> dict:
+    return run_document_authorization_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")

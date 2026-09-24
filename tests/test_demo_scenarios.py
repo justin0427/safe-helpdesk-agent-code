@@ -4,6 +4,7 @@ from app.demo_scenarios import (
     run_circuit_open_demo,
     run_context_compaction_demo,
     run_context_boundary_demo,
+    run_document_authorization_demo,
     run_external_share_blocked_demo,
     run_rag_injection_demo,
     run_sop_timeout_fallback_demo,
@@ -16,6 +17,18 @@ from app.demo_scenarios import (
 
 
 class DemoScenarioTests(unittest.TestCase):
+    def test_document_authorization_filters_tenant_acl_and_content(self) -> None:
+        result = run_document_authorization_demo()
+
+        self.assertTrue(result.stopped)
+        self.assertIn("最後只有 1 份文件", result.response)
+        self.assertIn("tenant_isolation", [event["name"] for event in result.trace])
+        self.assertIn("document_acl", [event["name"] for event in result.trace])
+        self.assertIn(
+            "nemo_regex_retrieval_rail",
+            [event["name"] for event in result.trace],
+        )
+
     def test_context_compaction_keeps_relevant_history_and_drops_the_secret(self) -> None:
         result = run_context_compaction_demo()
         rendered = str(result.as_dict())

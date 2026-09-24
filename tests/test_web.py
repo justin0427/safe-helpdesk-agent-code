@@ -98,6 +98,22 @@ class WebConsoleTests(unittest.TestCase):
         self.assertTrue(response.json()["stopped"])
         self.assertIn("3 個 context blocks", response.json()["response"])
 
+    def test_runs_the_document_authorization_demo(self) -> None:
+        response = self.client.post("/api/demos/document-authorization")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("最後只有 1 份文件", response.json()["response"])
+
+    def test_day_fourteen_screenshot_scenario_renders_authorization_layers(self) -> None:
+        response = self.client.get("/?scenario=document-authorization")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("tenant_isolation", response.text)
+        self.assertIn("document_acl", response.text)
+        self.assertIn("post_retrieval_authorization", response.text)
+        self.assertIn("nemo_regex_retrieval_rail", response.text)
+
     def test_day_twelve_screenshot_scenario_renders_context_decisions(self) -> None:
         response = self.client.get("/?scenario=context-compaction")
 

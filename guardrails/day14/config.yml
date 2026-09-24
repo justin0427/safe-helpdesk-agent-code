@@ -1,0 +1,12 @@
+rails:
+  config:
+    regex_detection:
+      retrieval:
+        patterns:
+          - '(system|developer)\s*(prompt|message)'
+          - 'ignore.{0,32}(previous|prior|all).{0,20}(instructions?|rules?)'
+          - '忽略.{0,16}(指令|規則)'
+        case_insensitive: true
+  retrieval:
+    flows:
+      - regex check retrieval

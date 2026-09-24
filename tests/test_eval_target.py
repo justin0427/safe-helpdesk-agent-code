@@ -4,6 +4,12 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_document_authorization_case_is_available_to_promptfoo(self) -> None:
+        result = run_security_case("document_authorization_isolated")
+
+        self.assertTrue(result["stopped"])
+        self.assertIn("跨 tenant 結果被再次擋下", result["answer"])
+
     def test_retrieval_attack_corpus_is_available_to_promptfoo(self) -> None:
         result = run_security_case("retrieval_attack_split_chunks")
 

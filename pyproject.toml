@@ -12,7 +12,13 @@ dependencies = [
     "opentelemetry-api>=1.30.0",
     "opentelemetry-exporter-otlp-proto-http>=1.30.0",
     "opentelemetry-sdk>=1.30.0",
+    "pyyaml>=6.0.0",
     "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+guardrails = [
+    "nemoguardrails==0.23.0",
 ]
 
 [build-system]

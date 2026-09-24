@@ -24,7 +24,7 @@ cp .env.example .env
 uvicorn app.web:app --reload
 ```
 
-開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。頁面有十二種操作：
+開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。頁面可執行真實 Agent，也有不需要 API key 的固定安全情境：
 
 - 輸入問題，執行真正的 LangChain Agent。
 - 「查看 SOP 優先流程」不需要 API key，固定顯示先查 SOP、再建 mock 工單的軌跡。
@@ -34,6 +34,7 @@ uvicorn app.web:app --reload
 - 「信任邊界」不需要 API key，固定取回建議升級處理的 mock SOP，確認它不會取得寫入授權。
 - 「惡意 SOP 被隔離」不需要 API key，固定取回一份含指令式內容的 mock 文件，並在送入模型 context 前隔離。
 - 「Context 精簡」不需要 API key，固定示範歷史壓縮、相關性選擇與敏感資料最小化。
+- 「文件授權邊界」不需要 API key，固定示範 tenant、文件 ACL、檢索後複檢與 NeMo regex Retrieval Rail 預覽。
 - 「外寄資料被擋」不需要 API key，固定驗證外部收件者會在 dispatch 前被 recipient allowlist 拒絕。
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
 - 「Token／成本上限」與「時間上限」不需要 API key，固定顯示執行預算用完後，停止下一次 Agent 動作。
@@ -45,6 +46,15 @@ uvicorn app.web:app --reload
 若要重現 Day 11 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=rag-injection`。固定情境會顯示惡意 mock SOP 被 `indirect_prompt_injection` 隔離，以及後端因缺少原始使用者授權而拒絕 `create_ticket`。
 
 若要重現 Day 12 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=context-compaction`。固定情境會顯示較舊但相關的 VPN 訊息被保留、無關歷史被省略、穩定資料被壓成摘要，以及 mock secret 在模型 context 前被移除。
+
+若要重現 Day 14 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=document-authorization`。固定情境會先過濾不同 tenant 與角色不符的文件，模擬取回後混入跨 tenant 結果，再由檢索後授權擋下；最後使用 Day 14 NeMo 設定的 regex 進行本機預覽。
+
+Day 14 的頁面是 deterministic preview，不會假裝 NeMo runtime 已執行。若要實際用 NeMo Guardrails 0.23.0 載入同一份設定：
+
+```bash
+uv pip install -e '.[guardrails]'
+python -m app.validate_nemo_config
+```
 
 若要啟用美元成本上限，還要依實際部署模型填入 `MODEL_INPUT_PER_MILLION_USD`、`MODEL_OUTPUT_PER_MILLION_USD` 與 `RUN_COST_BUDGET_USD`。價格留空時，Agent 仍有時間與 Token 上限，但不會猜測模型價格。
 
