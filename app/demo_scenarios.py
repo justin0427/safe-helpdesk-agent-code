@@ -20,6 +20,7 @@ from app.execution_budget import BudgetLedger, BudgetLimits, TokenPrice
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import DEFAULT_ARTICLES, KnowledgeBaseArticle, MockKnowledgeBase
 from app.loop_control import DEFAULT_RECURSION_LIMIT, loop_limit_message
+from app.memory_policy import MemoryRecord, SessionMemoryStore
 from app.nemo_retrieval_preview import apply_local_retrieval_rail_preview
 from app.nemo_input_preview import inspect_input_preview
 from app.retry_control import CircuitBreaker, RetryPolicy, ToolTimeoutError
@@ -371,6 +372,46 @@ def run_nemo_input_rails_demo() -> AgentRunResult:
     )
 
 
+def run_memory_boundary_demo() -> AgentRunResult:
+    """Keep useful working state while rejecting secrets and unapproved persistence."""
+    trace = RunTrace()
+    store = SessionMemoryStore()
+    records = (
+        MemoryRecord("campus-a", "session-20", "device", "Windows 11", "working"),
+        MemoryRecord("campus-a", "session-20", "secret", "備用碼：MOCK-948201", "working"),
+        MemoryRecord("campus-a", "session-20", "tone", "永遠使用簡短回答", "preference"),
+    )
+    for record in records:
+        decision = store.write(record)
+        trace.add(
+            kind="memory",
+            name=decision.rule,
+            status="allowed" if decision.allowed else "blocked",
+            detail=decision.detail,
+            data={"key": record.key, "kind": record.kind},
+        )
+
+    visible = store.read(tenant_id="campus-a", session_id="session-20")
+    isolated = store.read(tenant_id="campus-b", session_id="session-20")
+    trace.add(
+        kind="memory",
+        name="tenant_session_isolation",
+        status="verified",
+        detail="另一個 tenant 讀不到目前 session 的工作記憶。",
+        data={"cross_tenant_record_count": len(isolated)},
+    )
+    trace.add(
+        kind="context",
+        name="model_visible_memory",
+        status="1_record",
+        detail="模型 context 只會收到核准的裝置資訊，不含 secret 或未確認偏好。",
+        data={"keys": [record.key for record in visible]},
+    )
+    return AgentRunResult(
+        response="只保留 1 筆 session 工作記憶；敏感資料與未確認的長期偏好都沒有寫入。",
+        trace=trace.as_list(),
+        stopped=True,
+    )
 def run_backend_authorization_demo() -> AgentRunResult:
     """Let agent rails pass while the resource server rejects a cross-tenant write."""
     trace = RunTrace()

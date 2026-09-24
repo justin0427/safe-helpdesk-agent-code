@@ -86,6 +86,7 @@ class HelpdeskAgent:
         max_cost_usd: Decimal | None = None,
         sop_circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
+        self.model_name = model_name
         model = ChatOpenAI(
             model=model_name,
             temperature=0,
@@ -134,6 +135,13 @@ class HelpdeskAgent:
                 sop_circuit_breaker=self.sop_circuit_breaker,
             )
         )
+        trace.add(
+            kind="model",
+            name="live_llm",
+            status="requested",
+            detail=f"LangChain 準備呼叫已設定的 {self.model_name} 模型。",
+            data={"model": self.model_name, "mode": "live"},
+        )
         try:
             result = self.agent.invoke(
                 {
@@ -159,6 +167,13 @@ class HelpdeskAgent:
             )
 
         response = _message_text(result["messages"][-1].content)
+        trace.add(
+            kind="model",
+            name="live_llm",
+            status="completed",
+            detail=f"{self.model_name} 已完成本次 Agent loop。",
+            data={"model": self.model_name, "mode": "live"},
+        )
         trace.add(
             kind="model",
             name="final_response",

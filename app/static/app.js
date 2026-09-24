@@ -13,6 +13,7 @@ const externalShareButton = document.querySelector("#run-external-share-demo");
 const toolOutputButton = document.querySelector("#run-tool-output-demo");
 const nemoInputButton = document.querySelector("#run-nemo-input-demo");
 const backendAuthorizationButton = document.querySelector("#run-backend-authorization-demo");
+const memoryBoundaryButton = document.querySelector("#run-memory-boundary-demo");
 const loopButton = document.querySelector("#run-loop-demo");
 const tokenCostButton = document.querySelector("#run-token-cost-demo");
 const timeButton = document.querySelector("#run-time-demo");
@@ -21,6 +22,9 @@ const response = document.querySelector("#response");
 const ticketBlock = document.querySelector("#ticket-block");
 const ticket = document.querySelector("#ticket");
 const trace = document.querySelector("#trace");
+const liveModeStatus = document.querySelector("#live-mode-status");
+const liveModeDetail = document.querySelector("#live-mode-detail");
+let isLiveReady = false;
 
 function setStatus(text, state = "") {
   status.textContent = text;
@@ -28,9 +32,27 @@ function setStatus(text, state = "") {
 }
 
 function setBusy(isBusy) {
-  [runButton, sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, toolOutputButton, nemoInputButton, backendAuthorizationButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
+  [sopButton, ticketBeforeSopButton, sopTimeoutButton, circuitButton, contextButton, ragInjectionButton, contextCompactionButton, documentAuthorizationButton, toolCatalogButton, externalShareButton, toolOutputButton, nemoInputButton, backendAuthorizationButton, memoryBoundaryButton, loopButton, tokenCostButton, timeButton].forEach((button) => {
     button.disabled = isBusy;
   });
+  runButton.disabled = isBusy || !isLiveReady;
+}
+
+async function loadRuntimeStatus() {
+  try {
+    const result = await fetch("/api/runtime");
+    const runtime = await result.json();
+    isLiveReady = Boolean(runtime.live_llm_ready);
+    liveModeStatus.textContent = isLiveReady ? "已連接" : "尚未設定";
+    liveModeDetail.textContent = isLiveReady
+      ? `模型：${runtime.model_name}`
+      : "請先設定 OPENAI_API_KEY 與 MODEL_NAME。";
+  } catch (_error) {
+    liveModeStatus.textContent = "狀態無法讀取";
+    liveModeDetail.textContent = "deterministic tests 仍可使用。";
+  } finally {
+    runButton.disabled = !isLiveReady;
+  }
 }
 
 function renderTrace(events) {
@@ -106,6 +128,9 @@ externalShareButton.addEventListener("click", () => request("/api/demos/external
 toolOutputButton.addEventListener("click", () => request("/api/demos/tool-output"));
 nemoInputButton.addEventListener("click", () => request("/api/demos/nemo-input-rails"));
 backendAuthorizationButton.addEventListener("click", () => request("/api/demos/backend-authorization"));
+memoryBoundaryButton.addEventListener("click", () => request("/api/demos/memory-boundary"));
 loopButton.addEventListener("click", () => request("/api/demos/runaway-loop"));
 tokenCostButton.addEventListener("click", () => request("/api/demos/token-cost-budget"));
 timeButton.addEventListener("click", () => request("/api/demos/time-budget"));
+
+loadRuntimeStatus();

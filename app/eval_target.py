@@ -10,6 +10,7 @@ from app.demo_scenarios import run_context_compaction_demo
 from app.demo_scenarios import run_document_authorization_demo
 from app.demo_scenarios import run_tool_catalog_scope_demo
 from app.demo_scenarios import run_malformed_tool_output_demo
+from app.demo_scenarios import run_memory_boundary_demo
 from app.demo_scenarios import run_tool_output_sanitization_demo
 from app.demo_scenarios import run_nemo_input_case
 from app.demo_scenarios import run_false_success_output_demo
@@ -74,6 +75,8 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_backend_acl_denied()
     if case == "false_success_output_blocked":
         return _run_false_success_output_blocked()
+    if case == "memory_write_is_scoped":
+        return _run_memory_write_is_scoped()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -280,6 +283,16 @@ def _run_false_success_output_blocked() -> dict[str, object]:
         "answer": result.response,
         "stopped": result.stopped,
         "handler_called": False,
+        "trace": result.trace,
+    }
+
+
+def _run_memory_write_is_scoped() -> dict[str, object]:
+    result = run_memory_boundary_demo()
+    return {
+        "answer": result.response,
+        "stopped": result.stopped,
+        "model_visible_memory_count": 1,
         "trace": result.trace,
     }
 

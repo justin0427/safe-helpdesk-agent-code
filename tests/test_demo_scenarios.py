@@ -83,7 +83,10 @@ class DemoScenarioTests(unittest.TestCase):
 
         self.assertFalse(result.stopped)
         self.assertEqual(result.trace[0]["name"], "search_it_sop")
-        self.assertEqual(result.trace[1]["name"], "create_ticket")
+        self.assertLess(
+            [event["name"] for event in result.trace].index("retrieval_boundary"),
+            [event["name"] for event in result.trace].index("create_ticket"),
+        )
         self.assertEqual(result.ticket["status"], "created")
 
     def test_ticket_before_sop_demo_blocks_the_write(self) -> None:

@@ -1,13 +1,15 @@
 # Safe Helpdesk Agent Code
 
-這是一個可在本機操作的 LangChain IT Helpdesk Agent。它會查詢 mock SOP、建立記憶體中的 mock 工單，並把工具軌跡攤開顯示。唯讀 SOP 查詢有退避重試與降級回覆；重複的寫入請求會用 idempotency key 去重。
+這是一個可在本機操作的 LangChain IT Helpdesk Agent。頁面明確分成兩種模式：Live LLM mode 會透過 `ChatOpenAI` 呼叫 `.env` 指定的模型；Deterministic Test mode 使用固定 mock 資料重現安全行為，不呼叫外部模型。
+
+兩種模式都只會查詢本機 mock SOP、建立記憶體中的 mock 工單，並把模型、工具、retrieval boundary 與 guardrail 軌跡攤開顯示。唯讀 SOP 查詢有退避重試與降級回覆；重複的寫入請求會用 idempotency key 去重。
 
 工單不會連到 Jira、ServiceNow、公司帳號、通知服務或任何真實 IT 系統。
 
 ## Requirements
 
 - Python 3.11+
-- An OpenAI API key
+- An OpenAI API key（只在 Live LLM mode 需要）
 
 ## 啟動本機頁面
 
@@ -24,9 +26,9 @@ cp .env.example .env
 uvicorn app.web:app --reload
 ```
 
-開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。頁面可執行真實 Agent，也有不需要 API key 的固定安全情境：
+開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。左側會直接顯示 Live LLM 是否完成設定，API 不會回傳 key。頁面可執行真實 Agent，也有不需要 API key 的固定安全情境：
 
-- 輸入問題，執行真正的 LangChain Agent。
+- 輸入問題，執行真正的 LangChain Agent。Trace 中的 `live_llm requested/completed` 是主要模型呼叫的邊界。
 - 「查看 SOP 優先流程」不需要 API key，固定顯示先查 SOP、再建 mock 工單的軌跡。
 - 「先開單會被擋」不需要 API key，固定顯示後端在尚未查 SOP 時拒絕 mock 寫入。
 - 「SOP 逾時降級」不需要 API key，固定顯示唯讀查詢耗盡重試預算後，不建立工單的降級回覆。
@@ -39,6 +41,8 @@ uvicorn app.web:app --reload
 - 「外寄政策逐層檢查」不需要 API key，固定顯示工具註冊、read/write/execute 邊界、schema、收件者格式與 allowlist 的逐層決定；外部收件者會在 dispatch 前被拒絕。
 - 「工具輸出清理」不需要 API key，固定讓 mock 工具回傳含指令與除錯秘密的錯誤，再確認模型只會看到公開錯誤代碼。
 - 「NeMo Input Rails」不需要 API key，讀取 Day 18 的 NeMo regex Input Rail 設定，固定顯示 jailbreak、PII 與超出 Helpdesk policy 的輸入在模型呼叫前被拒絕。
+- 「後端最終授權」固定顯示 Agent 前段允許後，跨 tenant 寫入仍被 resource ACL 拒絕。
+- 「記憶寫入邊界」固定顯示短期工作記憶、敏感資料拒絕、長期偏好核准與 tenant/session 隔離。
 - 「觸發迴圈停止」不需要 API key，固定走到步數預算後安全停止。
 - 「Token／成本上限」與「時間上限」不需要 API key，固定顯示執行預算用完後，停止下一次 Agent 動作。
 
@@ -66,6 +70,8 @@ Day 14 的頁面是 deterministic preview，不會假裝 NeMo runtime 已執行�
 uv pip install -e '.[guardrails]'
 python -m app.validate_nemo_config
 ```
+
+Live LLM mode 與 deterministic tests 的角色不同。Live mode 用來觀察真實模型如何選工具與完成 Agent loop；固定情境與 Promptfoo 用來重跑安全條件。沒有設定 API key 時，專案不會把 mock 輸出冒充成模型結果。
 
 若要啟用美元成本上限，還要依實際部署模型填入 `MODEL_INPUT_PER_MILLION_USD`、`MODEL_OUTPUT_PER_MILLION_USD` 與 `RUN_COST_BUDGET_USD`。價格留空時，Agent 仍有時間與 Token 上限，但不會猜測模型價格。
 

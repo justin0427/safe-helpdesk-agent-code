@@ -26,11 +26,14 @@ from app.demo_scenarios import (
     run_tool_catalog_scope_demo,
     run_tool_output_sanitization_demo,
     run_nemo_input_rails_demo,
+    run_memory_boundary_demo,
     run_token_cost_budget_demo,
     run_runaway_loop_demo,
     run_sop_first_demo,
 )
 from app.retry_control import CircuitBreaker
+from app.nemo_input_preview import inspect_input_preview
+from app.run_trace import AgentRunResult, RunTrace
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -65,7 +68,20 @@ def index(scenario: str | None = None) -> FileResponse | HTMLResponse:
         return _scenario_page(run_nemo_input_rails_demo().as_dict())
     if scenario == "backend-authorization":
         return _scenario_page(run_backend_authorization_demo().as_dict())
+    if scenario == "memory-boundary":
+        return _scenario_page(run_memory_boundary_demo().as_dict())
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/api/runtime")
+def runtime_status() -> dict[str, str | bool | None]:
+    load_dotenv()
+    model_name = os.getenv("MODEL_NAME")
+    return {
+        "live_llm_ready": bool(os.getenv("OPENAI_API_KEY") and model_name),
+        "model_name": model_name or None,
+        "deterministic_tests_ready": True,
+    }
 
 
 @app.post("/api/run")
@@ -77,6 +93,26 @@ def run_agent(request: AgentRequest) -> dict:
             status_code=503,
             detail="請在 .env 設定 OPENAI_API_KEY 和 MODEL_NAME，或先使用下方本機示範。",
         )
+    input_decision = inspect_input_preview(request.message)
+    if not input_decision.allowed:
+        trace = RunTrace()
+        trace.add(
+            kind="guardrail",
+            name=f"configured_input_{input_decision.category}",
+            status="blocked",
+            detail=input_decision.public_message,
+        )
+        trace.add(
+            kind="model",
+            name="live_llm",
+            status="skipped",
+            detail="輸入在主要模型呼叫前被拒絕。",
+        )
+        return AgentRunResult(
+            response=input_decision.public_message,
+            trace=trace.as_list(),
+            stopped=True,
+        ).as_dict()
     try:
         agent = HelpdeskAgent(
             model_name=model_name,
@@ -159,6 +195,11 @@ def nemo_input_rails_demo() -> dict:
 @app.post("/api/demos/backend-authorization")
 def backend_authorization_demo() -> dict:
     return run_backend_authorization_demo().as_dict()
+
+
+@app.post("/api/demos/memory-boundary")
+def memory_boundary_demo() -> dict:
+    return run_memory_boundary_demo().as_dict()
 
 
 @app.post("/api/demos/token-cost-budget")

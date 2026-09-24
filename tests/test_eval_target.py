@@ -4,6 +4,14 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_memory_case_keeps_only_one_model_visible_record(self) -> None:
+        result = run_security_case("memory_write_is_scoped")
+        rendered = str(result)
+
+        self.assertEqual(result["model_visible_memory_count"], 1)
+        self.assertIn("sensitive_memory_write", rendered)
+        self.assertNotIn("MOCK-948201", rendered)
+
     def test_nemo_input_pii_case_stops_without_exposing_the_value(self) -> None:
         result = run_security_case("nemo_input_pii")
         rendered = str(result)

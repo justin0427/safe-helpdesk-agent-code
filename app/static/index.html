@@ -15,7 +15,7 @@
           <h1>Agent control room</h1>
         </div>
       </div>
-      <div class="environment"><span></span>Mock data only</div>
+      <div class="environment"><span></span>Live LLM + deterministic tests</div>
     </header>
 
     <main class="workbench">
@@ -27,17 +27,30 @@
           </div>
           <span class="step">01</span>
         </div>
-        <p class="intro">Agent 會先查詢可用 SOP，再決定是否建立 mock 工單。每一個工具選擇都會記錄在右側。</p>
+        <p class="intro">同一個頁面分成兩種模式：Live 模式真的呼叫設定的模型；測試模式用固定資料重現安全邊界。兩者的事件都會記錄在右側。</p>
+
+        <div class="mode-strip" aria-label="執行模式">
+          <div class="mode-card live-mode">
+            <span class="mode-label">LIVE LLM</span>
+            <strong id="live-mode-status" aria-live="polite">檢查設定中</strong>
+            <small id="live-mode-detail">讀取本機環境設定，不顯示 API key。</small>
+          </div>
+          <div class="mode-card test-mode">
+            <span class="mode-label">DETERMINISTIC TEST</span>
+            <strong>可直接執行</strong>
+            <small>固定 mock 資料，不呼叫外部模型。</small>
+          </div>
+        </div>
 
         <div class="safety-note">
-          <strong>本機 Mock 資料</strong>
-          <span>不會連線公司帳號、通知或正式工單系統；這不是隔離執行環境。</span>
+          <strong>安全範圍</strong>
+          <span>兩種模式都只使用本機 mock SOP 與記憶體工單，不連公司帳號、通知或正式 ITSM；這不是沙盒。</span>
         </div>
 
         <label for="message">訊息</label>
         <textarea id="message" rows="8">VPN 連不上，從今天早上九點開始發生，請先查 SOP；如果仍無法排除，請幫我開一張高優先級工單。</textarea>
-        <button id="run-agent" class="primary" type="button">執行 Agent</button>
-        <p class="hint">真實模型執行需要在 <code>.env</code> 設定 OpenAI API key 與模型名稱。</p>
+        <button id="run-agent" class="primary" type="button" disabled>執行 Live LLM Agent</button>
+        <p class="hint">Live 模式需要在 <code>.env</code> 設定 <code>OPENAI_API_KEY</code> 與 <code>MODEL_NAME</code>。頁面只回報是否完成設定，不會回傳 key。</p>
 
         <div class="demo-actions" aria-label="不需 API key 的示範">
           <div>
@@ -58,6 +71,7 @@
             <button id="run-tool-output-demo" class="secondary" type="button">工具輸出清理</button>
             <button id="run-nemo-input-demo" class="secondary" type="button">NeMo Input Rails</button>
             <button id="run-backend-authorization-demo" class="secondary" type="button">後端最終授權</button>
+            <button id="run-memory-boundary-demo" class="secondary" type="button">記憶寫入邊界</button>
             <button id="run-loop-demo" class="secondary" type="button">迴圈停止</button>
             <button id="run-token-cost-demo" class="secondary" type="button">Token／成本上限</button>
             <button id="run-time-demo" class="secondary" type="button">時間上限</button>
@@ -94,7 +108,7 @@
       </section>
     </main>
 
-    <footer><span>Safe Helpdesk Agent</span><span>Day 17 — 輸出清理　·　Day 18 — Input Rails　·　Day 19 — 後端授權</span></footer>
+    <footer><span>Safe Helpdesk Agent</span><span>Day 11–20 — Live LLM 主線與 deterministic security tests</span></footer>
     <script src="static/app.js"></script>
   </body>
 </html>

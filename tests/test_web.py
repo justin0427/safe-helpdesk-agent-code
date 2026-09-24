@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -20,6 +21,26 @@ class WebConsoleTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(".workbench", response.text)
+
+    def test_runtime_status_never_returns_the_api_key(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"OPENAI_API_KEY": "secret-value", "MODEL_NAME": "test-model"},
+            clear=True,
+        ):
+            response = self.client.get("/api/runtime")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["live_llm_ready"])
+        self.assertEqual(response.json()["model_name"], "test-model")
+        self.assertNotIn("secret-value", response.text)
+
+    def test_runtime_status_reports_unconfigured_live_mode(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            response = self.client.get("/api/runtime")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["live_llm_ready"])
 
     def test_runs_the_sop_first_demo(self) -> None:
         response = self.client.post("/api/demos/sop-first")
@@ -176,6 +197,24 @@ class WebConsoleTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["stopped"])
         self.assertIn("工單沒有變更", response.json()["response"])
+
+    def test_runs_the_memory_boundary_demo(self) -> None:
+        response = self.client.post("/api/demos/memory-boundary")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["stopped"])
+        self.assertIn("1 筆 session 工作記憶", response.json()["response"])
+        self.assertNotIn("MOCK-948201", response.text)
+
+    def test_day_twenty_screenshot_renders_memory_decisions(self) -> None:
+        response = self.client.get("/?scenario=memory-boundary")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("session_memory_write", response.text)
+        self.assertIn("sensitive_memory_write", response.text)
+        self.assertIn("persistent_memory_requires_approval", response.text)
+        self.assertIn("tenant_session_isolation", response.text)
+        self.assertNotIn("MOCK-948201", response.text)
 
     def test_day_nineteen_screenshot_renders_the_final_acl_denial(self) -> None:
         response = self.client.get("/?scenario=backend-authorization")

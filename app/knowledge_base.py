@@ -9,6 +9,7 @@ class KnowledgeBaseArticle:
     article_id: str
     title: str
     content: str
+    source: str = "approved_sop"
 
 
 DEFAULT_ARTICLES = (

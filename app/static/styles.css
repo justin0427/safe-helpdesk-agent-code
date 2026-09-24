@@ -107,6 +107,25 @@ footer {
 .result-panel .step { color: #6e8478; border-color: #d8e2da; }
 
 .intro { max-width: 34rem; margin: 22px 0 24px; color: #c4d7ca; font-size: 0.93rem; line-height: 1.65; }
+.mode-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.mode-card {
+  display: grid;
+  gap: 5px;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid rgba(194, 224, 207, 0.18);
+  border-radius: 10px;
+  background: #1a342a;
+}
+.mode-card.test-mode { background: #203a30; }
+.mode-label { color: #93bba7; font-size: 0.64rem; font-weight: 850; letter-spacing: 0.08em; }
+.mode-card strong { color: #eff7f1; font-size: 0.9rem; }
+.mode-card small { color: #a9c0b3; font-size: 0.7rem; line-height: 1.45; }
 .safety-note {
   display: grid;
   gap: 4px;
@@ -149,7 +168,7 @@ button {
 }
 button:hover { transform: translateY(-1px); }
 button:focus-visible { outline: 3px solid #e0a33c; outline-offset: 3px; }
-button:disabled { cursor: wait; opacity: 0.65; transform: none; }
+button:disabled { cursor: not-allowed; opacity: 0.52; transform: none; }
 .primary {
   width: 100%;
   margin-top: 16px;
@@ -247,6 +266,7 @@ footer span:first-child { color: #50655a; font-weight: 800; }
   .status-row, footer { align-items: flex-start; flex-direction: column; }
   .status-row > span { text-align: left; }
   .trace li { grid-template-columns: 24px minmax(0, 1fr); }
+  .mode-strip { grid-template-columns: 1fr; }
   .event-status { grid-column: 2; justify-self: start; }
 }
 

@@ -16,6 +16,7 @@ from app.retry_control import (
     RetryPolicy,
     run_with_retry,
 )
+from app.retrieval_boundary import filter_retrieved_documents
 from app.run_trace import RunTrace
 from app.tickets import MockTicketStore
 
@@ -71,8 +72,30 @@ class HelpdeskWorkflow:
                 }
             ]
 
-        self.sop_checked = True
-        return results
+        allowed_documents, decisions = filter_retrieved_documents(results)
+        for decision in decisions:
+            self.trace.add(
+                kind="retrieval",
+                name=decision.article_id,
+                status=decision.trust,
+                detail=f"已辨識文件來源與信任等級：{decision.trust}。",
+            )
+            self.trace.add(
+                kind="guardrail",
+                name=decision.rule,
+                status="allowed" if decision.allowed else "quarantined",
+                detail=decision.detail,
+            )
+
+        self.sop_checked = bool(allowed_documents)
+        if not allowed_documents:
+            self.trace.add(
+                kind="fallback",
+                name="retrieval_unavailable",
+                status="degraded",
+                detail="沒有通過 retrieval boundary 的 SOP，不允許後續寫入。",
+            )
+        return [dict(document) for document in allowed_documents]
 
     def create_ticket(
         self,
