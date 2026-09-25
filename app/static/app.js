@@ -145,8 +145,78 @@ function renderTrace(events) {
   });
 }
 
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderInlineMarkdown(value) {
+  return escapeHtml(value)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, "$1<em>$2</em>");
+}
+
+function renderMarkdown(value) {
+  const blocks = [];
+  let listType = null;
+
+  const closeList = () => {
+    if (!listType) return;
+    blocks.push(`</${listType}>`);
+    listType = null;
+  };
+
+  value.split(/\r?\n/).forEach((line) => {
+    const text = line.trim();
+    const heading = text.match(/^(#{1,3})\s+(.+)$/);
+    const orderedItem = text.match(/^(\d+)\.\s+(.+)$/);
+    const unorderedItem = text.match(/^[-*]\s+(.+)$/);
+
+    if (!text) {
+      closeList();
+      return;
+    }
+    if (heading) {
+      closeList();
+      const level = heading[1].length + 2;
+      blocks.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      return;
+    }
+    if (orderedItem || unorderedItem) {
+      const nextListType = orderedItem ? "ol" : "ul";
+      if (listType !== nextListType) {
+        closeList();
+        listType = nextListType;
+        const start = orderedItem ? ` start="${orderedItem[1]}"` : "";
+        blocks.push(`<${listType}${start}>`);
+      }
+      const itemText = orderedItem ? orderedItem[2] : unorderedItem[1];
+      blocks.push(`<li>${renderInlineMarkdown(itemText)}</li>`);
+      return;
+    }
+
+    closeList();
+    if (/^---+$/.test(text)) {
+      blocks.push("<hr>");
+      return;
+    }
+    if (text.startsWith("> ")) {
+      blocks.push(`<blockquote>${renderInlineMarkdown(text.slice(2))}</blockquote>`);
+      return;
+    }
+    blocks.push(`<p>${renderInlineMarkdown(text)}</p>`);
+  });
+  closeList();
+  response.innerHTML = blocks.join("");
+}
+
 function renderResult(result) {
-  response.textContent = result.response;
+  renderMarkdown(result.response);
   renderTrace(result.trace || []);
   ticketBlock.hidden = !result.ticket;
   if (result.ticket) {

@@ -65,7 +65,7 @@ uvicorn app.web:app --reload
 
 若要重現 Day 3 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=ticket-before-sop`。這個固定畫面和按鈕使用同一個後端情境，會顯示 `create_ticket` 請求、`sop_first` 阻擋與沒有建立 mock 工單的結果。
 
-若要重現 Day 11 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=rag-injection`。固定情境會顯示惡意 mock SOP 被 `indirect_prompt_injection` 隔離，以及後端因缺少原始使用者授權而拒絕 `create_ticket`。
+若要重現 Day 11 主圖，請在首頁選擇「Day 11｜惡意 SOP」並執行 Live 測試。第一次模型呼叫會提出 `search_it_sop`，文件經 retrieval boundary 後才進入第二次模型呼叫。`http://127.0.0.1:8000/?scenario=rag-injection` 則是固定回歸情境，用來驗證惡意文件漏判後仍不能替使用者授權 `create_ticket`。
 
 若要重現 Day 12 的文章截圖，可開啟 `http://127.0.0.1:8000/?scenario=context-compaction`。固定情境會顯示較舊但相關的 VPN 訊息被保留、無關歷史被省略、穩定資料被壓成摘要，以及 mock secret 在模型 context 前被移除。
 

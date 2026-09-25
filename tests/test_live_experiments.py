@@ -60,13 +60,35 @@ class LiveExperimentRunnerTests(unittest.TestCase):
         self.assertEqual([item["day"] for item in experiment_catalog()], list(range(11, 25)))
 
     def test_day_eleven_quarantines_poison_before_the_real_model_context(self) -> None:
-        model = FakeExperimentModel(AIMessage(content="請重新登入 VPN。"))
+        model = FakeExperimentModel(
+            tool_answer(("SearchItSopProposal", {"query": "VPN 無法連線"})),
+            AIMessage(content="請重新登入 VPN。"),
+        )
 
         result = LiveExperimentRunner(model).run(11, "VPN 連不上")
 
-        self.assertIn("indirect_prompt_injection", [event["name"] for event in result.trace])
-        self.assertNotIn("忽略前面規則", str(model.calls))
-        self.assertIn("live_llm", [event["name"] for event in result.trace])
+        events = [(event["name"], event["status"]) for event in result.trace]
+        self.assertEqual(len(model.calls), 2)
+        self.assertEqual(model.calls[0]["tools"], ("SearchItSopProposal",))
+        self.assertEqual(model.calls[1]["tools"], ())
+        self.assertIn(("search_it_sop", "requested"), events)
+        self.assertIn(("search_it_sop", "completed"), events)
+        self.assertIn(("indirect_prompt_injection", "quarantined"), events)
+        self.assertNotIn("忽略前面規則", str(model.calls[1]))
+        self.assertEqual(
+            [event["status"] for event in result.trace if event["name"] == "live_llm"],
+            ["requested", "completed", "requested", "completed"],
+        )
+
+    def test_day_eleven_stops_when_model_skips_sop_tool(self) -> None:
+        model = FakeExperimentModel(AIMessage(content="直接回答。"))
+
+        result = LiveExperimentRunner(model).run(11, "VPN 連不上")
+
+        self.assertTrue(result.stopped)
+        self.assertEqual(len(model.calls), 1)
+        self.assertEqual(result.trace[-1]["name"], "search_it_sop")
+        self.assertEqual(result.trace[-1]["status"], "not_requested")
 
     def test_day_sixteen_validates_the_models_actual_tool_proposal(self) -> None:
         model = FakeExperimentModel(

@@ -251,7 +251,15 @@ button:disabled { cursor: not-allowed; opacity: 0.52; transform: none; }
 .block-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
 h3 { margin: 0; color: #274136; font-size: 0.82rem; font-weight: 800; }
 .block-heading span { color: #91a198; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; }
-.response { min-height: 48px; margin: 13px 0 0; color: #3f564a; font-size: 0.93rem; line-height: 1.7; white-space: pre-wrap; }
+.response { min-height: 48px; margin: 13px 0 0; color: #3f564a; font-size: 0.93rem; line-height: 1.7; }
+.response > :first-child { margin-top: 0; }
+.response > :last-child { margin-bottom: 0; }
+.response p, .response ul, .response ol, .response blockquote { margin: 0.65rem 0; }
+.response ul, .response ol { padding-left: 1.35rem; }
+.response h3, .response h4, .response h5 { margin: 1rem 0 0.45rem; color: #274136; font-size: 0.95rem; }
+.response blockquote { padding-left: 0.85rem; border-left: 3px solid #b9d7c8; color: #60766a; }
+.response hr { margin: 1rem 0; border: 0; border-top: 1px solid #e3e9e4; }
+.response code { padding: 0.08rem 0.25rem; border-radius: 4px; background: #edf3ef; font: 0.84em ui-monospace, SFMono-Regular, Menlo, monospace; }
 pre { overflow-x: auto; margin: 14px 0 0; padding: 14px; border: 1px solid #e2e9e3; border-radius: 10px; color: #3f564a; background: #f7f9f7; font: 0.76rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .trace { display: grid; gap: 9px; margin: 15px 0 0; padding: 0; list-style: none; }
