@@ -56,7 +56,7 @@
         <label for="message">你要送給 Agent 的 Prompt</label>
         <textarea id="message" rows="8">VPN 連不上，從今天早上九點開始發生，請先查 SOP；如果仍無法排除，請幫我開一張高優先級工單。</textarea>
         <button id="run-agent" class="primary" type="button" disabled>執行 Live security experiment</button>
-        <p class="hint">Live 模式需要在 <code>.env</code> 設定模型名稱與憑證；OpenAI-compatible 服務可再設定 <code>MODEL_BASE_URL</code>。頁面不會回傳 key 或端點位址。</p>
+        <p class="hint">Gemini Live 模式需要在 <code>.env</code> 設定 <code>GEMINI_API_KEY</code>；其他 OpenAI-compatible 服務可設定 <code>MODEL_API_KEY</code> 與 <code>MODEL_BASE_URL</code>。頁面不會回傳 key 或端點位址。</p>
 
         <details class="demo-actions">
           <summary>

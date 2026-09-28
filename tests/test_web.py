@@ -55,7 +55,7 @@ class WebConsoleTests(unittest.TestCase):
                 {"MODEL_NAME": "test-model", "MODEL_API_KEY": "test-key"},
                 clear=True,
             ),
-            patch("app.web.OpenAIExperimentModel"),
+            patch("app.web.LangChainExperimentModel"),
             patch("app.web.LiveExperimentRunner") as runner_class,
         ):
             runner_class.return_value.run.return_value = result

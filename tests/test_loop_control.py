@@ -8,7 +8,7 @@ class LoopControlTests(unittest.TestCase):
         self.assertEqual(build_agent_config(6), {"recursion_limit": 6})
 
     def test_live_agent_allows_a_complete_two_tool_loop(self) -> None:
-        self.assertEqual(LIVE_AGENT_RECURSION_LIMIT, 20)
+        self.assertEqual(LIVE_AGENT_RECURSION_LIMIT, 32)
 
     def test_rejects_an_impossibly_small_limit(self) -> None:
         with self.assertRaises(ValueError):

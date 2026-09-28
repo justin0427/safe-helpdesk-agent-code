@@ -8,7 +8,6 @@ from typing import Literal, Optional
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
 from langchain.tools import ToolRuntime, tool
-from langchain_openai import ChatOpenAI
 from langchain_core.exceptions import ModelError, ModelTimeoutError
 from langgraph.errors import GraphRecursionError
 
@@ -17,11 +16,13 @@ from app.execution_budget import (
     ExecutionBudgetMiddleware,
     MAX_MODEL_CALLS,
     MAX_OUTPUT_TOKENS_PER_CALL,
+    MAX_SOP_SEARCH_CALLS,
     MAX_TOOL_CALLS,
     MODEL_TIMEOUT_SECONDS,
     DEFAULT_RUN_TIME_BUDGET_SECONDS,
     TokenPrice,
 )
+from app.chat_models import build_chat_model, message_text
 from app.context_boundaries import (
     TRUSTED_SYSTEM_POLICY,
     has_explicit_ticket_request,
@@ -93,12 +94,11 @@ class HelpdeskAgent:
         sop_circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
         self.model_name = model_name
-        model = ChatOpenAI(
-            model=model_name,
-            api_key=model_api_key,
+        model = build_chat_model(
+            model_name=model_name,
+            api_key=model_api_key or "",
             base_url=model_base_url,
-            temperature=0,
-            timeout=model_timeout_seconds,
+            timeout_seconds=model_timeout_seconds,
             max_tokens=MAX_OUTPUT_TOKENS_PER_CALL,
         )
         self.requested_by = requested_by
@@ -127,6 +127,11 @@ class HelpdeskAgent:
                     pricing=self.token_price,
                 ),
                 ModelCallLimitMiddleware(run_limit=MAX_MODEL_CALLS, exit_behavior="end"),
+                ToolCallLimitMiddleware(
+                    tool_name="search_it_sop",
+                    run_limit=MAX_SOP_SEARCH_CALLS,
+                    exit_behavior="end",
+                ),
                 ToolCallLimitMiddleware(run_limit=MAX_TOOL_CALLS, exit_behavior="end"),
             ],
         )
@@ -201,7 +206,7 @@ class HelpdeskAgent:
                 stopped=True,
             )
 
-        response = _message_text(result["messages"][-1].content)
+        response = message_text(result["messages"][-1].content)
         if not response.strip():
             response = "模型沒有產生可顯示的回覆；系統沒有因此執行其他動作。"
             trace.add(
@@ -224,18 +229,6 @@ class HelpdeskAgent:
             detail="模型已產生最終回覆。",
         )
         return AgentRunResult(response=response, trace=trace.as_list())
-
-
-def _message_text(content: object) -> str:
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        return "\n".join(
-            part["text"]
-            for part in content
-            if isinstance(part, dict) and isinstance(part.get("text"), str)
-        )
-    return str(content)
 
 
 def _token_price(

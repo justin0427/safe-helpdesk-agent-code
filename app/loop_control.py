@@ -1,7 +1,7 @@
 """Bound the number of LangGraph super-steps per Agent invocation."""
 
 DEFAULT_RECURSION_LIMIT = 6
-LIVE_AGENT_RECURSION_LIMIT = 20
+LIVE_AGENT_RECURSION_LIMIT = 32
 MINIMUM_RECURSION_LIMIT = 3
 
 

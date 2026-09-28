@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal, Protocol, Sequence
 
 from langchain.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langchain_core.exceptions import ModelError, ModelTimeoutError
 from pydantic import BaseModel, Field
 
@@ -41,6 +40,7 @@ from app.run_trace import AgentRunResult, RunTrace
 from app.tool_catalog import TOOL_CATALOG, tools_for_helpdesk_triage
 from app.tool_output_policy import sanitize_tool_output
 from app.tool_policy import EXTERNAL_SHARE_DEMO_POLICY, validate_tool_call_steps
+from app.chat_models import build_chat_model, message_text
 
 
 @dataclass(frozen=True)
@@ -139,7 +139,7 @@ class ExperimentModel(Protocol):
     ) -> AIMessage: ...
 
 
-class OpenAIExperimentModel:
+class LangChainExperimentModel:
     def __init__(
         self,
         *,
@@ -149,12 +149,11 @@ class OpenAIExperimentModel:
         timeout_seconds: float,
     ) -> None:
         self.model_name = model_name
-        self._model = ChatOpenAI(
-            model=model_name,
+        self._model = build_chat_model(
+            model_name=model_name,
             api_key=api_key,
             base_url=base_url,
-            temperature=0,
-            timeout=timeout_seconds,
+            timeout_seconds=timeout_seconds,
             max_tokens=800,
         )
 
@@ -904,8 +903,9 @@ def _secured_documents_prompt(documents: Sequence[SecuredDocument]) -> str:
 
 
 def _answer_text(message: AIMessage) -> str:
-    if isinstance(message.content, str) and message.content.strip():
-        return message.content.strip()
+    text = message_text(message.content).strip()
+    if text:
+        return text
     return "模型沒有產生文字回答；工具提案與政策結果請查看 trace。"
 
 

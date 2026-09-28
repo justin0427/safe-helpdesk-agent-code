@@ -39,7 +39,7 @@ from app.nemo_input_preview import inspect_input_preview
 from app.model_settings import ModelSettings
 from app.live_experiments import (
     LiveExperimentRunner,
-    OpenAIExperimentModel,
+    LangChainExperimentModel,
     experiment_catalog,
 )
 from app.run_trace import AgentRunResult, RunTrace
@@ -120,7 +120,7 @@ def run_live_experiment(request: LiveExperimentRequest) -> dict:
     assert settings.model_name is not None
     assert settings.api_key is not None
     runner = LiveExperimentRunner(
-        OpenAIExperimentModel(
+        LangChainExperimentModel(
             model_name=settings.model_name,
             api_key=settings.api_key,
             base_url=settings.base_url,

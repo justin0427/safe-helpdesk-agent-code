@@ -36,6 +36,42 @@ class ModelSettingsTests(unittest.TestCase):
         self.assertIsNone(settings.base_url)
         self.assertEqual(settings.provider_label, "OpenAI")
 
+    def test_reads_gemini_openai_compatible_settings(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "MODEL_NAME": "gemini-3.5-flash-lite",
+                "GEMINI_API_KEY": "gemini-key",
+                "MODEL_API_KEY": "unrelated-key",
+                "MODEL_BASE_URL": (
+                    "https://generativelanguage.googleapis.com/v1beta/openai/"
+                ),
+            },
+            clear=True,
+        ):
+            settings = ModelSettings.from_env()
+
+        self.assertTrue(settings.is_ready)
+        self.assertEqual(settings.api_key, "gemini-key")
+        self.assertEqual(settings.provider_label, "Google Gemini")
+
+    def test_does_not_send_an_unrelated_model_key_to_gemini(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "MODEL_NAME": "gemini-3.5-flash-lite",
+                "MODEL_API_KEY": "local-model-key",
+                "MODEL_BASE_URL": (
+                    "https://generativelanguage.googleapis.com/v1beta/openai/"
+                ),
+            },
+            clear=True,
+        ):
+            settings = ModelSettings.from_env()
+
+        self.assertFalse(settings.is_ready)
+        self.assertIsNone(settings.api_key)
+
     def test_requires_both_model_and_credentials(self) -> None:
         with patch.dict("os.environ", {"MODEL_NAME": "local-model"}, clear=True):
             settings = ModelSettings.from_env()
