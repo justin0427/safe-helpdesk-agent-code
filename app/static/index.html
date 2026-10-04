@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Safe Helpdesk Agent</title>
-    <link rel="stylesheet" href="static/styles.css?v=day11-rag-tool-loop" />
+    <link rel="stylesheet" href="static/styles.css?v=day25-approval-flow" />
   </head>
   <body>
     <header class="app-header">
@@ -49,7 +49,7 @@
 
         <label for="experiment-day">文章實驗</label>
         <select id="experiment-day" aria-describedby="experiment-boundary" disabled>
-          <option>載入 Day 11–24 實驗中</option>
+          <option>載入 Day 11–27 實驗中</option>
         </select>
         <p id="experiment-boundary" class="experiment-boundary">選擇文章天數後，可直接修改下方 Prompt。</p>
 
@@ -110,6 +110,19 @@
           <pre id="ticket"></pre>
         </div>
 
+        <div class="result-block approval-block" id="approval-block" hidden>
+          <div class="block-heading"><h3>操作預覽</h3><span>HUMAN APPROVAL</span></div>
+          <dl class="approval-preview">
+            <div><dt>操作</dt><dd id="approval-action"></dd></div>
+            <div><dt>目標</dt><dd id="approval-target"></dd></div>
+            <div><dt>影響</dt><dd id="approval-effect"></dd></div>
+            <div><dt>原因</dt><dd id="approval-reason"></dd></div>
+            <div><dt>狀態</dt><dd id="approval-status"></dd></div>
+          </dl>
+          <button id="confirm-approval" class="danger" type="button">確認執行這一項操作</button>
+          <p class="approval-hint">確認只授權畫面上的 action、subject 與參數一次；原始核准憑證不會顯示在頁面或 trace。</p>
+        </div>
+
         <div class="result-block">
           <div class="block-heading"><h3>工具軌跡</h3><span>MODEL / TOOL / GUARDRAIL</span></div>
           <ol id="trace" class="trace">
@@ -119,7 +132,7 @@
       </section>
     </main>
 
-    <footer><span>Safe Helpdesk Agent</span><span>Day 11–24 — prompt-driven Live LLM experiments + deterministic regression tests</span></footer>
-    <script src="static/app.js?v=day11-rag-tool-loop"></script>
+    <footer><span>Safe Helpdesk Agent</span><span>Day 11–27 — prompt-driven Live LLM experiments + deterministic regression tests</span></footer>
+    <script src="static/app.js?v=day25-approval-flow"></script>
   </body>
 </html>

@@ -4,6 +4,24 @@ from app.eval_target import AVAILABLE_TOOL_NAMES, run_security_case
 
 
 class PromptfooEvaluationTargetTests(unittest.TestCase):
+    def test_changed_operation_cannot_reuse_an_approval(self) -> None:
+        result = run_security_case("approval_scope_tamper_blocked")
+        rendered = str(result)
+
+        self.assertFalse(result["handler_called"])
+        self.assertIn("approval_scope", rendered)
+        self.assertIn("blocked", rendered)
+        self.assertIn("irreversible_handler", rendered)
+
+    def test_approval_timeout_escalates_without_execution(self) -> None:
+        result = run_security_case("approval_timeout_escalates")
+        rendered = str(result)
+
+        self.assertFalse(result["handler_called"])
+        self.assertEqual(result["approval_status"], "escalated")
+        self.assertIn("approval_timeout", rendered)
+        self.assertIn("approval_escalation", rendered)
+
     def test_multi_agent_case_contains_one_worker_failure(self) -> None:
         result = run_security_case("multi_agent_failure_is_contained")
         rendered = str(result)

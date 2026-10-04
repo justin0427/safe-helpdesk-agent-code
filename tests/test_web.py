@@ -4,7 +4,8 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.run_trace import AgentRunResult
-from app.web import app
+from app.approval_workflow import IrreversibleOperation
+from app.web import APPROVAL_WORKFLOW, app
 
 
 class WebConsoleTests(unittest.TestCase):
@@ -19,11 +20,11 @@ class WebConsoleTests(unittest.TestCase):
         self.assertIn("experiment-day", response.text)
         self.assertIn("Live security experiment", response.text)
 
-    def test_lists_prompt_driven_experiments_for_days_eleven_through_twenty_four(self) -> None:
+    def test_lists_prompt_driven_experiments_for_days_eleven_through_twenty_seven(self) -> None:
         response = self.client.get("/api/experiments")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual([item["day"] for item in response.json()], list(range(11, 25)))
+        self.assertEqual([item["day"] for item in response.json()], list(range(11, 28)))
 
     def test_live_experiment_requires_model_configuration(self) -> None:
         with patch("app.web.load_dotenv"), patch.dict("os.environ", {}, clear=True):
@@ -67,6 +68,28 @@ class WebConsoleTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["response"], "live result")
         runner_class.return_value.run.assert_called_once_with(19, "關閉 TICKET-B-002")
+
+    def test_confirms_one_pending_approval_without_returning_the_token(self) -> None:
+        pending = APPROVAL_WORKFLOW.create(
+            IrreversibleOperation(
+                action="delete_ticket_attachment",
+                subject_id="student-25",
+                ticket_id="TICKET-WEB-25",
+                attachment_id="diagnostic.log",
+                reason="web test",
+            )
+        )
+
+        response = self.client.post(
+            "/api/approvals/confirm",
+            json={"approval_id": pending.approval_id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["approval"]["status"], "consumed")
+        self.assertIn("irreversible_handler", response.text)
+        self.assertNotIn("nonce", response.text)
+        self.assertNotIn("signature", response.text)
 
     def test_serves_the_console_stylesheet(self) -> None:
         response = self.client.get("/static/styles.css")

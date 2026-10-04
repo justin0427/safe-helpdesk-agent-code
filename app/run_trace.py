@@ -50,6 +50,7 @@ class AgentRunResult:
     trace: list[dict[str, Any]]
     ticket: dict[str, str] | None = None
     stopped: bool = False
+    approval: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)

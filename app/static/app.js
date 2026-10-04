@@ -25,12 +25,21 @@ const status = document.querySelector("#run-status");
 const response = document.querySelector("#response");
 const ticketBlock = document.querySelector("#ticket-block");
 const ticket = document.querySelector("#ticket");
+const approvalBlock = document.querySelector("#approval-block");
+const approvalAction = document.querySelector("#approval-action");
+const approvalTarget = document.querySelector("#approval-target");
+const approvalEffect = document.querySelector("#approval-effect");
+const approvalReason = document.querySelector("#approval-reason");
+const approvalStatus = document.querySelector("#approval-status");
+const confirmApprovalButton = document.querySelector("#confirm-approval");
 const trace = document.querySelector("#trace");
 const liveModeStatus = document.querySelector("#live-mode-status");
 const liveModeDetail = document.querySelector("#live-mode-detail");
 const runEvidence = document.querySelector("#run-evidence");
 let isLiveReady = false;
 let isExperimentCatalogReady = false;
+let currentApprovalId = null;
+let currentTrace = [];
 
 const scenarioButtons = [
   sopButton,
@@ -65,6 +74,7 @@ function setBusy(isBusy) {
   });
   experimentDay.disabled = isBusy || !isExperimentCatalogReady;
   runButton.disabled = isBusy || !isLiveReady || !isExperimentCatalogReady;
+  confirmApprovalButton.disabled = isBusy || !currentApprovalId;
 }
 
 async function loadRuntimeStatus() {
@@ -215,13 +225,28 @@ function renderMarkdown(value) {
   response.innerHTML = blocks.join("");
 }
 
-function renderResult(result) {
+function renderApproval(approval) {
+  approvalBlock.hidden = !approval;
+  currentApprovalId = approval?.status === "pending" ? approval.approval_id : null;
+  if (!approval) return;
+  approvalAction.textContent = approval.action;
+  approvalTarget.textContent = approval.target;
+  approvalEffect.textContent = approval.effect;
+  approvalReason.textContent = approval.reason;
+  approvalStatus.textContent = approval.status;
+  confirmApprovalButton.hidden = approval.status !== "pending";
+  confirmApprovalButton.disabled = approval.status !== "pending";
+}
+
+function renderResult(result, { appendTrace = false } = {}) {
   renderMarkdown(result.response);
-  renderTrace(result.trace || []);
+  currentTrace = appendTrace ? [...currentTrace, ...(result.trace || [])] : (result.trace || []);
+  renderTrace(currentTrace);
   ticketBlock.hidden = !result.ticket;
   if (result.ticket) {
     ticket.textContent = JSON.stringify(result.ticket, null, 2);
   }
+  renderApproval(result.approval);
   setStatus(result.stopped ? "已安全停止" : "完成", result.stopped ? "stopped" : "success");
 }
 
@@ -246,7 +271,30 @@ async function request(url, body, evidence = "固定資料回歸測試；本次�
   }
 }
 
+async function confirmApproval() {
+  if (!currentApprovalId) return;
+  setBusy(true);
+  setStatus("核准驗證中", "running");
+  try {
+    const result = await fetch("/api/approvals/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approval_id: currentApprovalId }),
+    });
+    const payload = await result.json();
+    if (!result.ok) throw new Error(payload.detail || "核准失敗");
+    renderResult(payload, { appendTrace: true });
+    runEvidence.textContent = "模型只提出操作；這次獨立點擊才建立、驗證並消耗一次性核准憑證。";
+  } catch (error) {
+    response.textContent = error.message;
+    setStatus("無法核准", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
 experimentDay.addEventListener("change", selectExperiment);
+confirmApprovalButton.addEventListener("click", confirmApproval);
 runButton.addEventListener("click", () => {
   const prompt = message.value.trim();
   if (!prompt) {

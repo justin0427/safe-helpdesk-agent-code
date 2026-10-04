@@ -4,6 +4,7 @@ from pathlib import Path
 from decimal import Decimal, InvalidOperation
 from html import escape
 import os
+import secrets
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -12,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.agent import HelpdeskAgent
+from app.approval_workflow import ApprovalWorkflow
 from app.execution_budget import DEFAULT_RUN_TIME_BUDGET_SECONDS, MODEL_TIMEOUT_SECONDS
 from app.demo_scenarios import (
     run_backend_authorization_demo,
@@ -51,6 +53,7 @@ STATIC_DIR = BASE_DIR / "static"
 app = FastAPI(title="Safe Helpdesk Agent")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 SOP_CIRCUIT_BREAKER = CircuitBreaker()
+APPROVAL_WORKFLOW = ApprovalWorkflow(signing_key=secrets.token_bytes(32))
 
 
 class AgentRequest(BaseModel):
@@ -58,8 +61,12 @@ class AgentRequest(BaseModel):
 
 
 class LiveExperimentRequest(BaseModel):
-    day: int = Field(ge=11, le=24)
+    day: int = Field(ge=11, le=27)
     message: str = Field(min_length=1, max_length=1_000)
+
+
+class ApprovalConfirmationRequest(BaseModel):
+    approval_id: str = Field(min_length=1, max_length=100)
 
 
 @app.get("/", include_in_schema=False, response_model=None)
@@ -125,9 +132,40 @@ def run_live_experiment(request: LiveExperimentRequest) -> dict:
             api_key=settings.api_key,
             base_url=settings.base_url,
             timeout_seconds=_float_env("MODEL_TIMEOUT_SECONDS", MODEL_TIMEOUT_SECONDS),
-        )
+        ),
+        approval_workflow=APPROVAL_WORKFLOW,
     )
     return runner.run(request.day, request.message).as_dict()
+
+
+@app.post("/api/approvals/confirm")
+def confirm_approval(request: ApprovalConfirmationRequest) -> dict:
+    try:
+        execution = APPROVAL_WORKFLOW.approve_and_execute(
+            request.approval_id,
+            approved_by="demo.approver",
+        )
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="找不到待核准操作，請重新執行 Day 25。") from error
+
+    trace = RunTrace()
+    for decision in execution.decisions:
+        trace.add(
+            kind="tool" if decision.rule == "irreversible_handler" else "approval",
+            name=decision.rule,
+            status=decision.outcome,
+            detail=decision.detail,
+        )
+    return AgentRunResult(
+        response=(
+            "核准只套用在預覽中的 mock 附件；一次性憑證已消耗，handler 已完成。"
+            if execution.executed
+            else "核准未通過，mock 附件沒有變更。"
+        ),
+        trace=trace.as_list(),
+        stopped=not execution.executed,
+        approval=APPROVAL_WORKFLOW.preview(execution.request),
+    ).as_dict()
 
 
 @app.post("/api/run")

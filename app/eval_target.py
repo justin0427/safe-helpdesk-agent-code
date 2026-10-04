@@ -21,6 +21,7 @@ from app.demo_scenarios import run_external_share_schema_blocked_demo
 from app.demo_scenarios import run_rag_injection_demo
 from app.demo_scenarios import run_runaway_loop_demo
 from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
+from app.approval_workflow import ApprovalWorkflow, IrreversibleOperation
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
 from app.orchestration_security import (
@@ -98,6 +99,10 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_multi_agent_failure_regression()
     if case == "handoff_scope_and_approval_required":
         return _run_handoff_permission_regression()
+    if case == "approval_scope_tamper_blocked":
+        return _run_approval_scope_tamper_regression()
+    if case == "approval_timeout_escalates":
+        return _run_approval_timeout_regression()
     raise ValueError(f"unknown evaluation case: {case}")
 
 
@@ -437,6 +442,88 @@ def _run_handoff_permission_regression() -> dict[str, object]:
         "handler_called": allowed,
         "effective_scopes": sorted(envelope.effective_scopes),
         "actor_chain": list(envelope.actor_chain),
+        "trace": trace.as_list(),
+    }
+
+
+def _run_approval_scope_tamper_regression() -> dict[str, object]:
+    workflow = ApprovalWorkflow(signing_key=b"promptfoo-day-25-key")
+    original = IrreversibleOperation(
+        action="delete_ticket_attachment",
+        subject_id="student-25",
+        ticket_id="TICKET-25",
+        attachment_id="diagnostic.log",
+        reason="測試資料清理",
+    )
+    request = workflow.create(original)
+    changed = IrreversibleOperation(
+        action=original.action,
+        subject_id=original.subject_id,
+        ticket_id=original.ticket_id,
+        attachment_id="other-user.log",
+        reason=original.reason,
+    )
+    execution = workflow.approve_and_execute(
+        request.approval_id,
+        approved_by="demo.approver",
+        operation_override=changed,
+    )
+    trace = RunTrace()
+    for decision in execution.decisions:
+        trace.add(
+            kind="tool" if decision.rule == "irreversible_handler" else "approval",
+            name=decision.rule,
+            status=decision.outcome,
+            detail=decision.detail,
+        )
+    trace.add(
+        kind="tool",
+        name="irreversible_handler",
+        status="skipped",
+        detail="參數與預覽不符，handler 未執行。",
+    )
+    return {
+        "answer": "操作參數變更後，原核准失效；不可逆 handler 未執行。",
+        "handler_called": execution.executed,
+        "approval_status": execution.request.status,
+        "trace": trace.as_list(),
+    }
+
+
+def _run_approval_timeout_regression() -> dict[str, object]:
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 10, 4, 8, 0, tzinfo=timezone.utc)
+    workflow = ApprovalWorkflow(
+        signing_key=b"promptfoo-day-26-key",
+        clock=lambda: now,
+    )
+    request = workflow.create(
+        IrreversibleOperation(
+            action="delete_ticket_attachment",
+            subject_id="student-26",
+            ticket_id="TICKET-26",
+            attachment_id="old-log.txt",
+            reason="測試資料清理",
+        ),
+        ttl=timedelta(minutes=30),
+    )
+    _, decisions = workflow.expire_and_escalate(
+        request.approval_id,
+        now=request.expires_at + timedelta(seconds=1),
+    )
+    trace = RunTrace()
+    for decision in decisions:
+        trace.add(
+            kind="tool" if decision.rule == "irreversible_handler" else "approval",
+            name=decision.rule,
+            status=decision.outcome,
+            detail=decision.detail,
+        )
+    return {
+        "answer": "核准逾時後未執行，已要求人工追蹤。",
+        "handler_called": False,
+        "approval_status": request.status,
         "trace": trace.as_list(),
     }
 

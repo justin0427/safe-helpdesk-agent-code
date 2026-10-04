@@ -56,8 +56,8 @@ def tool_answer(*calls: tuple[str, dict[str, object]]) -> AIMessage:
 
 
 class LiveExperimentRunnerTests(unittest.TestCase):
-    def test_catalog_covers_days_eleven_through_twenty_four(self) -> None:
-        self.assertEqual([item["day"] for item in experiment_catalog()], list(range(11, 25)))
+    def test_catalog_covers_days_eleven_through_twenty_seven(self) -> None:
+        self.assertEqual([item["day"] for item in experiment_catalog()], list(range(11, 28)))
 
     def test_day_eleven_quarantines_poison_before_the_real_model_context(self) -> None:
         model = FakeExperimentModel(
@@ -244,6 +244,71 @@ class LiveExperimentRunnerTests(unittest.TestCase):
         self.assertIn(("approval_gate", "pending"), events)
         self.assertIn(("reset_password_handler", "skipped"), events)
         self.assertIn(("audit_owner", "recorded"), events)
+
+    def test_day_twenty_five_creates_a_parameter_bound_preview(self) -> None:
+        model = FakeExperimentModel(
+            tool_answer(
+                (
+                    "DeleteAttachmentProposal",
+                    {
+                        "ticket_id": "TICKET-25",
+                        "attachment_id": "diagnostic.log",
+                        "reason": "測試資料清理",
+                    },
+                )
+            )
+        )
+
+        result = LiveExperimentRunner(model).run(25, "先預覽再刪除附件")
+
+        events = [(event["name"], event["status"]) for event in result.trace]
+        self.assertEqual(result.approval["status"], "pending")
+        self.assertEqual(result.approval["target"], "TICKET-25 / diagnostic.log")
+        self.assertIn(("approval_scope", "bound"), events)
+        self.assertIn(("irreversible_handler", "pending"), events)
+
+    def test_day_twenty_six_expires_without_executing(self) -> None:
+        model = FakeExperimentModel(
+            tool_answer(
+                (
+                    "DeleteAttachmentProposal",
+                    {
+                        "ticket_id": "TICKET-26",
+                        "attachment_id": "old-log.txt",
+                        "reason": "清理測試附件",
+                    },
+                )
+            )
+        )
+
+        result = LiveExperimentRunner(model).run(26, "逾時後不要執行")
+
+        events = [(event["name"], event["status"]) for event in result.trace]
+        self.assertIn(("approval_timeout", "expired"), events)
+        self.assertIn(("irreversible_handler", "skipped"), events)
+        self.assertIn(("approval_escalation", "required"), events)
+        self.assertIn(("read_only_work", "allowed"), events)
+
+    def test_day_twenty_seven_keeps_dangerous_tool_behind_approval(self) -> None:
+        model = FakeExperimentModel(
+            tool_answer(
+                (
+                    "DeleteAttachmentProposal",
+                    {
+                        "ticket_id": "TICKET-27",
+                        "attachment_id": "evidence.log",
+                        "reason": "security probe",
+                    },
+                )
+            )
+        )
+
+        result = LiveExperimentRunner(model).run(27, "測試未經核准的危險工具")
+
+        events = [(event["name"], event["status"]) for event in result.trace]
+        self.assertIn(("dangerous_tool_without_approval", "passed"), events)
+        self.assertIn(("approval_gate", "blocked"), events)
+        self.assertIn(("irreversible_handler", "skipped"), events)
 
 
 if __name__ == "__main__":
