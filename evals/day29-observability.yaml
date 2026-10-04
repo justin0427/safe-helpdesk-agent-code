@@ -1,0 +1,27 @@
+- description: 去識別化失敗要保留指標並轉成固定回歸案例
+  vars:
+    case: production_failure_replayed
+    message: 重播 FAIL-MOCK-029。
+  metadata:
+    day: 29
+    category: production_failure_replay
+  assert:
+    - type: contains
+      value: '"failure_id": "FAIL-MOCK-029"'
+    - type: contains
+      value: '"total_tokens": 2900'
+    - type: contains
+      value: '"estimated_cost_usd": 0.0034'
+    - type: contains
+      value: '"latency_ms": 1420'
+    - type: contains
+      value: '"guardrail_interception_rate": 0.5'
+    - type: contains
+      value: '"tool_failure_rate": 1.0'
+    - type: contains
+      value: '"retry_count": 2'
+    - type: contains
+      value: '"regression_case_generated": true'
+    - type: contains
+      value: '"ticket_count": 0'
+

@@ -21,6 +21,11 @@ from app.demo_scenarios import run_external_share_schema_blocked_demo
 from app.demo_scenarios import run_rag_injection_demo
 from app.demo_scenarios import run_runaway_loop_demo
 from app.execution_budget import BudgetLimits, ExecutionBudgetMiddleware
+from app.evaluation_security import (
+    release_gate_manifest,
+    run_false_refusal_regression,
+    run_observability_regression,
+)
 from app.approval_workflow import ApprovalWorkflow, IrreversibleOperation
 from app.helpdesk_workflow import HelpdeskWorkflow
 from app.knowledge_base import MockKnowledgeBase
@@ -103,6 +108,12 @@ def run_security_case(case: str) -> dict[str, object]:
         return _run_approval_scope_tamper_regression()
     if case == "approval_timeout_escalates":
         return _run_approval_timeout_regression()
+    if case == "false_refusal_detected":
+        return run_false_refusal_regression()
+    if case == "production_failure_replayed":
+        return run_observability_regression()
+    if case == "release_gate_manifest":
+        return release_gate_manifest()
     raise ValueError(f"unknown evaluation case: {case}")
 
 

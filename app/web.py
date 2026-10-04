@@ -61,7 +61,7 @@ class AgentRequest(BaseModel):
 
 
 class LiveExperimentRequest(BaseModel):
-    day: int = Field(ge=11, le=27)
+    day: int = Field(ge=11, le=30)
     message: str = Field(min_length=1, max_length=1_000)
 
 

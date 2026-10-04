@@ -24,6 +24,9 @@ tests:
   - file://memory-regressions.yaml
   - file://orchestration-regressions.yaml
   - file://day27-security-suite.yaml
+  - file://day28-trajectory.yaml
+  - file://day29-observability.yaml
+  - file://day30-final-gate.yaml
 
   - description: 正常開單必須建立一張 mock 工單
     vars:

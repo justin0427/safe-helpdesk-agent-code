@@ -37,9 +37,9 @@ RUN_TIME_BUDGET_SECONDS=120
 uvicorn app.web:app --reload
 ```
 
-開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。左側會直接顯示 Live LLM 是否完成設定，API 不會回傳 key。Day 11～27 的主流程是「選擇文章實驗、修改 Prompt、呼叫真實模型、由後端政策決定是否執行」。每次 Live trace 都會留下模型呼叫事件；Day 18 若被 Input Rail 擋下，則留下 `live_llm skipped`。
+開啟 [http://127.0.0.1:8000](http://127.0.0.1:8000)。左側會直接顯示 Live LLM 是否完成設定，API 不會回傳 key。Day 11～30 的主流程是「選擇文章實驗、修改 Prompt、呼叫真實模型、由後端政策決定是否執行」。每次 Live trace 都會留下模型呼叫事件；Day 18 若被 Input Rail 擋下，則留下 `live_llm skipped`。
 
-固定情境仍保留在「開啟固定資料測試」內，供 Promptfoo、回歸測試與故障重現使用，不再當成 Day 11～27 的主要模型實驗：
+固定情境仍保留在「開啟固定資料測試」內，供 Promptfoo、回歸測試與故障重現使用，不再當成 Day 11～30 的主要模型實驗：
 
 - 輸入問題，執行真正的 LangChain Agent。Trace 中的 `live_llm requested/completed` 是主要模型呼叫的邊界。
 - 「查看 SOP 優先流程」不需要 API key，固定顯示先查 SOP、再建 mock 工單的軌跡。
@@ -92,7 +92,7 @@ python -m app.validate_nemo_config
 
 Live LLM mode 與 deterministic tests 的角色不同。Live mode 用來觀察真實模型如何選工具與完成 Agent loop；固定情境與 Promptfoo 用來重跑安全條件。沒有設定 API key 時，專案不會把 mock 輸出冒充成模型結果。
 
-Live security experiments 使用同一個輸入框，但每一天提供不同的 model-visible context 或工具 schema。例如 Day 16 讓模型真的提出外寄工具參數，再由 recipient allowlist 擋下；Day 19 讓模型真的提出 `close_ticket`，後端仍以 resource ACL 做最後判斷；Day 20～22 由模型提出 memory candidates；Day 23、24 實際執行 multi-agent fan-out 與 handoff 權限縮減；Day 25～27 則加入操作預覽、一次性核准、逾時升級與 Promptfoo security suite。資料、授權與安全測試的通過條件都不交給模型決定。
+Live security experiments 使用同一個輸入框，但每一天提供不同的 model-visible context 或工具 schema。例如 Day 16 讓模型真的提出外寄工具參數，再由 recipient allowlist 擋下；Day 19 讓模型真的提出 `close_ticket`，後端仍以 resource ACL 做最後判斷；Day 20～22 由模型提出 memory candidates；Day 23、24 實際執行 multi-agent fan-out 與 handoff 權限縮減；Day 25～27 加入操作預覽、一次性核准、逾時升級與 Promptfoo security suite；Day 28～30 再驗證 trajectory、side effect、trace metrics、失敗回灌與最終 release gate。資料、授權與安全測試的通過條件都不交給模型決定。
 
 若要啟用美元成本上限，還要依實際部署模型填入 `MODEL_INPUT_PER_MILLION_USD`、`MODEL_OUTPUT_PER_MILLION_USD` 與 `RUN_COST_BUDGET_USD`。價格留空時，Agent 仍有時間與 Token 上限，但不會猜測模型價格。
 
@@ -126,4 +126,12 @@ Day 5 的 deterministic security cases 不需要 OpenAI API key：
 npx --yes promptfoo@latest eval -c evals/promptfooconfig.yaml --no-cache
 ```
 
-它會驗證正常開單、越權帳號重設請求、SOP 工具不可用、工具失敗時不得假裝成功、Token 預算用完後不得執行工具、服務熔斷後不得繼續重試、惡意 retrieval 內容不得取得工具授權、敏感歷史不得進入 model-visible context，以及記憶生命週期與 memory poisoning 防線。Day 9 加入 Promptfoo OpenTelemetry tracing，讓 suite 也驗證工具順序、工具次數與停止事件；Day 22 再把不可信記憶來源、核准等待與核准者 scope 做成固定回歸案例。這些測試直接呼叫本機 mock workflow，不需要 OpenAI API key。
+它會驗證正常開單、越權帳號重設請求、SOP 工具不可用、工具失敗時不得假裝成功、Token 預算用完後不得執行工具、服務熔斷後不得繼續重試、惡意 retrieval 內容不得取得工具授權、敏感歷史不得進入 model-visible context，以及記憶生命週期與 memory poisoning 防線。Day 9 加入 Promptfoo OpenTelemetry tracing，讓 suite 也驗證工具順序、工具次數與停止事件；Day 22 再把不可信記憶來源、核准等待與核准者 scope 做成固定回歸案例；Day 28～30 增加 side-effect verification、production-shaped failure replay 與最終安全 gate。這些測試直接呼叫本機 mock workflow，不需要模型 API key。
+
+最終 CI gate 只跑可重現的本機案例，不把外部模型金鑰放進 workflow：
+
+```bash
+npx --yes promptfoo@0.123.1 eval -c evals/promptfooconfig.yaml --no-progress-bar --no-cache --filter-metadata day=30
+```
+
+Gate 通過只表示 repo 內已知需求沒有回歸。它不涵蓋正式 IdP／ITSM、分散式狀態、完整自動紅隊或正式滲透測試。
